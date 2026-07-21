@@ -115,11 +115,11 @@
   .addrow input{flex:1.2;} .addrow select{flex:1;}
   #searchBox{width:100%; background:rgba(14,10,26,.85); border:1px solid var(--line); color:var(--text); border-radius:4px; padding:7px 10px; font-size:13px; margin-bottom:10px; font-family:inherit;}
   #searchBox:focus{outline:none; border-color:var(--gold);}
-  .roster{display:flex; flex-direction:column; gap:6px; max-height:60vh; overflow-y:auto; padding-right:4px;}
+  .roster{display:flex; flex-direction:column; gap:6px; max-height:72vh; overflow-y:auto; padding-right:4px;}
   .roster::-webkit-scrollbar{width:8px;}
   .roster::-webkit-scrollbar-thumb{background:linear-gradient(180deg,var(--gold3),#453a72); border-radius:4px;}
   .chip{
-    position:relative; display:flex; align-items:center; gap:8px;
+    position:relative; display:flex; align-items:center; gap:8px; flex-shrink:0;
     background:linear-gradient(135deg,#2d2454 0%, #241d42 60%, #201938 100%);
     border:1px solid #443a70; border-left:4px solid var(--etc);
     border-radius:4px; padding:7px 9px; cursor:grab; user-select:none; transition:.15s;
