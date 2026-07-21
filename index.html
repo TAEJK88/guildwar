@@ -170,6 +170,11 @@
   .party .phead input:focus{outline:none; border-bottom-color:var(--gold);}
   .pips{font-size:12px; letter-spacing:2px; color:var(--gold); white-space:nowrap; text-shadow:0 0 6px rgba(232,182,76,.6);}
   .pips .off{color:#4d4276; text-shadow:none;}
+  .pnote{width:100%; background:rgba(14,10,26,.6); border:1px dashed #4d4276; border-radius:4px; color:#c9bfe0; font-family:inherit; font-size:12px; padding:4px 8px; margin-bottom:8px;}
+  .pnote:focus{outline:none; border-color:var(--gold);}
+  .comp{display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; font-size:11.5px;}
+  .comp span{background:rgba(255,255,255,.06); border:1px solid var(--line); border-radius:3px; padding:1px 7px; color:var(--muted);}
+  .comp span.warn{color:#ffb3b3; border-color:rgba(224,85,85,.55); background:rgba(224,85,85,.12);}
   .slots{display:flex; flex-direction:column; gap:6px;}
   .slot{
     min-height:42px; border:1px dashed #4d4276; border-radius:4px;
@@ -192,6 +197,11 @@
     pointer-events:none; z-index:99; box-shadow:0 8px 30px rgba(0,0,0,.6), 0 0 18px rgba(232,182,76,.25);
   }
   #toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+  .adm{display:none;}
+  body.admin .adm{display:inline-block;}
+  body.member .pfoot, body.member #partyMgmtRow, body.member #saveBtn, body.member #openBtn, body.member .slot .del{display:none !important;}
+  body.member .slot.empty-click:hover{border-color:#4d4276; cursor:default; box-shadow:inset 0 2px 6px rgba(0,0,0,.4);}
+  body.member .chip{cursor:default;}
   .rosterwrap.dragover{outline:2px dashed var(--gold); outline-offset:4px; border-radius:6px; box-shadow:0 0 22px rgba(232,182,76,.3);}
 </style>
 </head>
@@ -218,10 +228,11 @@
   <input type="text" id="eventTitle" placeholder="หัวข้อ เช่น กิลวอรอบเย็น สัปดาห์นี้" oninput="scheduleSave()">
   <input type="text" id="eventTime" placeholder="วัน-เวลานัด เช่น อาทิตย์ 20:00" oninput="scheduleSave()">
   <button class="btn gold" onclick="copyDiscord()">📋 ก๊อปลง Discord</button>
-  <button class="btn" onclick="exportData()">💾 บันทึกไฟล์</button>
-  <button class="btn" onclick="document.getElementById('importFile').click()">📂 เปิดไฟล์</button>
+  <button class="btn" id="saveBtn" onclick="exportData()">💾 บันทึกไฟล์</button>
+  <button class="btn" id="openBtn" onclick="document.getElementById('importFile').click()">📂 เปิดไฟล์</button>
   <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
-  <button class="btn" onclick="copyRoomLink()">🔗 ก๊อปลิงก์ห้อง</button>
+  <button class="btn" onclick="copyRoomLink()">🔗 ลิงก์แจกสมาชิก</button>
+  <button class="btn adm" onclick="copyAdminLink()">👑 ลิงก์หัวกิล</button>
   <span id="connStatus" style="font-size:12.5px; padding:6px 12px; border:1px solid var(--line); border-radius:4px; color:var(--muted);">⚪ ออฟไลน์</span>
 </div>
 
@@ -235,14 +246,25 @@
     <div class="addrow">
       <button class="btn small gold" style="flex:1" onclick="addMember()">➕ เพิ่มสมาชิก</button>
     </div>
-    <input type="text" id="searchBox" placeholder="🔍 ค้นหาชื่อ / อาชีพ..." oninput="render()">
+    <div class="addrow">
+      <input type="text" id="searchBox" placeholder="🔍 ค้นหาชื่อ / อาชีพ..." oninput="render()" style="width:auto;flex:1.4;margin-bottom:0">
+      <select id="roleFilter" onchange="render()" style="flex:1">
+        <option value="">ทุกบทบาท</option>
+        <option value="tank">🛡️ แท้งค์</option>
+        <option value="heal">💚 ฮีล</option>
+        <option value="support">✨ ซัพพอร์ต</option>
+        <option value="dps">⚔️ ดาเมจ</option>
+      </select>
+    </div>
     <div class="roster" id="rosterList"></div>
   </div>
 
   <div>
     <div class="parties" id="partiesArea"></div>
-    <div style="text-align:center; margin-top:14px;">
+    <div id="partyMgmtRow" style="text-align:center; margin-top:14px; display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
       <button class="btn" onclick="addParty()">➕ เพิ่มตี้ใหม่</button>
+      <button class="btn gold" onclick="autoArrange()">🎲 จัดตี้อัตโนมัติ</button>
+      <button class="btn" onclick="clearAllParties()">♻️ เคลียร์ทุกตี้</button>
     </div>
   </div>
 </div>
@@ -330,6 +352,7 @@ function addMember(){
   render();
 }
 function deleteMember(id){
+  if(!isAdmin && partyOf(id)){ toast('คนนี้อยู่ในตี้แล้ว ให้หัวกิลเป็นคนแก้นะ'); return; }
   removeFromParty(id);
   state.members = state.members.filter(m => m.id !== id);
   if(selectedMemberId === id) selectedMemberId = null;
@@ -338,19 +361,23 @@ function deleteMember(id){
 
 // ---------- parties ----------
 function addParty(){
-  state.parties.push({id: state.nextId++, name:'ตี้ '+(state.parties.length+1), slots:Array(PARTY_SIZE).fill(null)});
+  if(!isAdmin){ toast(ADMIN_MSG); return; }
+  state.parties.push({id: state.nextId++, name:'ตี้ '+(state.parties.length+1), note:'', slots:Array(PARTY_SIZE).fill(null)});
   render();
 }
 function deleteParty(pid){
+  if(!isAdmin){ toast(ADMIN_MSG); return; }
   state.parties = state.parties.filter(p => p.id !== pid);
   render();
 }
 function clearParty(pid){
+  if(!isAdmin){ toast(ADMIN_MSG); return; }
   const p = state.parties.find(x => x.id === pid);
   if(p) p.slots = Array(PARTY_SIZE).fill(null);
   render();
 }
 function assignToSlot(memberId, partyId, slotIndex){
+  if(!isAdmin){ toast(ADMIN_MSG); return; }
   const p = state.parties.find(x => x.id === partyId);
   if(!p) return;
   const occupant = p.slots[slotIndex];
@@ -373,6 +400,7 @@ function assignToSlot(memberId, partyId, slotIndex){
 
 // ---------- drag & drop ----------
 function onDragStart(ev, memberId){
+  if(!isAdmin){ ev.preventDefault(); return; }
   ev.dataTransfer.setData('text/plain', String(memberId));
   ev.dataTransfer.effectAllowed = 'move';
 }
@@ -391,11 +419,73 @@ function onRosterDrop(ev){
 
 // ---------- click-to-assign (มือถือ) ----------
 function onChipClick(memberId){
+  if(!isAdmin) return;
   selectedMemberId = (selectedMemberId === memberId) ? null : memberId;
   render();
 }
 function onSlotClick(partyId, slotIndex){
   if(selectedMemberId !== null) assignToSlot(selectedMemberId, partyId, slotIndex);
+}
+
+// ---------- บทบาท / จัดอัตโนมัติ ----------
+const ROLE_META = {
+  tank:{emoji:'🛡️', label:'แท้งค์'},
+  heal:{emoji:'💚', label:'ฮีล'},
+  support:{emoji:'✨', label:'ซัพ'},
+  dps:{emoji:'⚔️', label:'ดาเมจ'},
+};
+const JOB_ROLE = {
+  'อัศวิน (Knight)':'tank', 'ครูเสด (Crusader)':'tank',
+  'พรีสต์ (Priest)':'heal',
+  'เซจ (Sage)':'support', 'บาร์ด (Bard)':'support', 'แดนเซอร์ (Dancer)':'support', 'โร้ก (Rogue)':'support',
+};
+const jobRole = job => JOB_ROLE[job] || 'dps';
+function setNote(pid, v){
+  if(!isAdmin){ toast(ADMIN_MSG); return; }
+  const p = state.parties.find(x => x.id === pid);
+  if(p){ p.note = v.trim(); render(); }
+}
+function compHTML(p){
+  const counts = {tank:0, heal:0, support:0, dps:0};
+  let filled = 0;
+  p.slots.forEach(s => { if(s !== null){ filled++; counts[jobRole(memberById(s).job)]++; } });
+  if(!filled) return '';
+  const parts = Object.entries(counts).filter(([,c]) => c > 0)
+    .map(([r,c]) => `<span>${ROLE_META[r].emoji} ${ROLE_META[r].label} ×${c}</span>`);
+  if(counts.heal === 0) parts.push('<span class="warn">⚠️ ไม่มีฮีล</span>');
+  if(counts.tank === 0) parts.push('<span class="warn">⚠️ ไม่มีแท้งค์</span>');
+  return `<div class="comp">${parts.join('')}</div>`;
+}
+function autoArrange(){
+  if(!isAdmin){ toast(ADMIN_MSG); return; }
+  const un = state.members.filter(m => !partyOf(m.id));
+  if(!un.length){ toast('ทุกคนมีตี้อยู่แล้ว'); return; }
+  const emptyCount = () => state.parties.reduce((a,p) => a + p.slots.filter(s => s === null).length, 0);
+  while(emptyCount() < un.length)
+    state.parties.push({id:state.nextId++, name:'ตี้ '+(state.parties.length+1), note:'', slots:Array(PARTY_SIZE).fill(null)});
+  const prio = {heal:0, tank:1, support:2, dps:3};
+  un.sort((a,b) => prio[jobRole(a.job)] - prio[jobRole(b.job)]);
+  for(const m of un){
+    const role = jobRole(m.job);
+    let best = null, bestKey = Infinity;
+    for(const p of state.parties){
+      if(p.slots.indexOf(null) === -1) continue;
+      const roleCount = p.slots.filter(s => s !== null && jobRole(memberById(s).job) === role).length;
+      const total = p.slots.filter(s => s !== null).length;
+      const key = roleCount*100 + total;
+      if(key < bestKey){ best = p; bestKey = key; }
+    }
+    if(best) best.slots[best.slots.indexOf(null)] = m.id;
+  }
+  render();
+  toast('🎲 จัดให้แล้ว '+un.length+' คน — ลากสลับเองต่อได้เลย');
+}
+function clearAllParties(){
+  if(!isAdmin){ toast(ADMIN_MSG); return; }
+  if(!state.parties.some(p => p.slots.some(s => s !== null))){ toast('ตี้ว่างอยู่แล้ว'); return; }
+  if(!window.confirm('เอาสมาชิกออกจากทุกตี้ใช่ไหม? (รายชื่อสมาชิกไม่หาย)')) return;
+  state.parties.forEach(p => p.slots = Array(PARTY_SIZE).fill(null));
+  render();
 }
 
 // ---------- render ----------
@@ -408,7 +498,7 @@ function chipHTML(m, inSlot){
   const delBtn = inSlot
     ? `<button class="del" title="เอาออกจากตี้" onclick="event.stopPropagation();removeFromParty(${m.id});render()">✕</button>`
     : `<button class="del" title="ลบสมาชิก" onclick="event.stopPropagation();deleteMember(${m.id})">🗑</button>`;
-  return `<div class="chip${sel}${asg}" style="--jc:${ji.color};border-left-color:${ji.color}" draggable="true"
+  return `<div class="chip${sel}${asg}" style="--jc:${ji.color};border-left-color:${ji.color}" draggable="${isAdmin}"
     ondragstart="onDragStart(event,${m.id})" onclick="onChipClick(${m.id})">
     ${iconHTML(ji)}
     <span class="info"><span class="nm">${esc(m.name)}</span><span class="jb">${esc(m.job)}</span></span>
@@ -424,7 +514,10 @@ function render(){
 
   // roster
   const q = document.getElementById('searchBox').value.trim().toLowerCase();
-  const list = state.members.filter(m => !q || m.name.toLowerCase().includes(q) || m.job.toLowerCase().includes(q));
+  const rf = document.getElementById('roleFilter').value;
+  const list = state.members.filter(m =>
+    (!q || m.name.toLowerCase().includes(q) || m.job.toLowerCase().includes(q)) &&
+    (!rf || jobRole(m.job) === rf));
   document.getElementById('rosterList').innerHTML =
     list.length ? list.map(m => chipHTML(m,false)).join('')
     : `<div style="color:#5d5480;font-size:13px;text-align:center;padding:14px 0;font-style:italic">${state.members.length? 'ไม่พบที่ค้นหา' : 'ยังไม่มีสมาชิก — เพิ่มชื่อด้านบนได้เลย'}</div>`;
@@ -435,9 +528,10 @@ function render(){
   document.getElementById('partiesArea').innerHTML = state.parties.map(p => `
     <div class="party">
       <div class="phead"><span class="flag">🚩</span>
-        <input value="${esc(p.name)}" onchange="renameParty(${p.id},this.value)">
+        <input value="${esc(p.name)}" ${isAdmin?'':'readonly'} onchange="renameParty(${p.id},this.value)">
         <span class="pips" title="${p.slots.filter(s=>s!==null).length}/${PARTY_SIZE}">${p.slots.map(s=>s!==null?'◆':'<span class="off">◇</span>').join('')}</span>
       </div>
+      <input class="pnote" placeholder="${isAdmin?'📌 หน้าที่ตี้ เช่น บุกเสา / กันเอ็ม / ล่าหัว':''}" value="${esc(p.note||'')}" ${isAdmin?'':'readonly'} onchange="setNote(${p.id},this.value)">
       <div class="slots">
         ${p.slots.map((mid,i) => {
           const m = mid !== null ? memberById(mid) : null;
@@ -449,6 +543,7 @@ function render(){
           </div>`;
         }).join('')}
       </div>
+      ${compHTML(p)}
       <div class="pfoot">
         <button class="btn small" onclick="copyOneParty(${p.id})">📋 ก๊อปตี้นี้</button>
         <button class="btn small" onclick="clearParty(${p.id})">↩ เคลียร์</button>
@@ -464,6 +559,7 @@ function render(){
   scheduleSave(); // sync ขึ้นห้องออนไลน์ (ถ้าเชื่อมต่ออยู่)
 }
 function renameParty(pid, name){
+  if(!isAdmin){ toast(ADMIN_MSG); return; }
   const p = state.parties.find(x => x.id === pid);
   if(p){ p.name = name.trim() || p.name; render(); }
 }
@@ -471,6 +567,7 @@ function renameParty(pid, name){
 // ---------- Discord export ----------
 function partyText(p, idx){
   const lines = [`🚩 **${p.name}**`];
+  if(p.note) lines.push(`> 📌 ${p.note}`);
   p.slots.forEach((mid,i) => {
     if(mid !== null){
       const m = memberById(mid); const ji = jobInfo(m.job);
@@ -572,6 +669,8 @@ const firebaseConfig = {
 // ========================================================================
 
 let roomRef = null, applyingRemote = false, saveTm = null, lastSentJSON = '';
+let isAdmin = true, adminKey = null;
+const ADMIN_MSG = '👑 เฉพาะหัวกิลเท่านั้นที่จัดตี้ได้นะ';
 
 function setStatus(mode){
   const el = document.getElementById('connStatus');
@@ -590,7 +689,7 @@ function randRoomId(){
 function serializeState(){
   return {
     members: state.members.map(m => ({id:m.id, name:m.name, job:m.job})),
-    parties: state.parties.map(p => ({id:p.id, name:p.name, slots:p.slots.map(s => s === null ? -1 : s)})),
+    parties: state.parties.map(p => ({id:p.id, name:p.name, note:p.note||'', slots:p.slots.map(s => s === null ? -1 : s)})),
     nextId: state.nextId,
   };
 }
@@ -602,7 +701,7 @@ function normalizeState(raw){
       const v = src[i];
       return (v === undefined || v === null || v === -1) ? null : v;
     });
-    return {id:p.id, name:p.name || 'ตี้', slots};
+    return {id:p.id, name:p.name || 'ตี้', note:p.note || '', slots};
   });
   const nextId = raw.nextId || Math.max(0, ...members.map(m=>m.id), ...parties.map(p=>p.id)) + 1;
   return {members, parties, nextId};
@@ -617,13 +716,31 @@ function scheduleSave(){
       state: serializeState(),
       updatedAt: firebase.database.ServerValue.TIMESTAMP,
     };
+    if(adminKey) payload.adminKey = adminKey;
     lastSentJSON = JSON.stringify({t:payload.eventTitle, m:payload.eventTime, s:payload.state});
     roomRef.set(payload).catch(() => toast('⚠️ ส่งข้อมูลไม่สำเร็จ เช็คอินเทอร์เน็ต/สิทธิ์ฐานข้อมูล'));
   }, 350);
 }
 function copyRoomLink(){
   if(!roomRef){ toast('⚠️ ยังไม่ได้ตั้งค่า Firebase — ดูวิธีในกรอบเหลืองด้านบน'); return; }
-  copyText(location.href, '✅ ก๊อปลิงก์ห้องแล้ว! ส่งให้สมาชิกกิลได้เลย');
+  copyText(location.href.replace(/~.*$/,''), '✅ ก๊อปลิงก์สมาชิกแล้ว! แจกในกิลได้เลย');
+}
+function copyAdminLink(){
+  if(!roomRef || !adminKey){ toast('⚠️ ยังไม่ออนไลน์'); return; }
+  copyText(location.href.replace(/~.*$/,'') + '~' + adminKey, '👑 ก๊อปลิงก์หัวกิลแล้ว — เก็บไว้คนเดียวนะ!');
+}
+function setMode(){
+  const online = !!roomRef;
+  document.body.classList.toggle('admin', online && isAdmin);
+  document.body.classList.toggle('member', online && !isAdmin);
+  const et = document.getElementById('eventTitle'), em = document.getElementById('eventTime');
+  et.readOnly = em.readOnly = online && !isAdmin;
+  const nb = document.getElementById('noticeBar');
+  if(online && !isAdmin){
+    nb.innerHTML = '🙋 <b>โหมดสมาชิก</b> — พิมพ์ชื่อตัวละคร + เลือกอาชีพ แล้วกด "เพิ่มสมาชิก" ได้เลย เดี๋ยวหัวกิลจัดตี้ให้ หน้านี้อัปเดตสดอัตโนมัติ';
+  } else if(online && isAdmin){
+    nb.innerHTML = '👑 <b>โหมดหัวกิล</b> — ลิงก์ในช่องแอดเดรสตอนนี้มีรหัสหัวกิลต่อท้าย เก็บไว้คนเดียว! เวลาแจกสมาชิกให้ใช้ปุ่ม "🔗 ลิงก์แจกสมาชิก" เท่านั้น';
+  }
 }
 function initOnline(){
   const configured = typeof firebase !== 'undefined'
@@ -636,17 +753,43 @@ function initOnline(){
   }
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
-  let room = location.hash.slice(1).replace(/[^a-z0-9_-]/gi,'');
-  if(!room){ room = randRoomId(); history.replaceState(null, '', '#'+room); }
+  const hashParts = location.hash.slice(1).split('~');
+  let room = (hashParts[0]||'').replace(/[^a-z0-9_-]/gi,'');
+  let urlKey = (hashParts[1]||'').replace(/[^a-z0-9_-]/gi,'');
+  if(!room){
+    room = randRoomId(); adminKey = randRoomId(); isAdmin = true;
+    history.replaceState(null, '', '#'+room+'~'+adminKey);
+  } else {
+    isAdmin = false; // รอเช็ครหัสกับห้องก่อน
+  }
   roomRef = db.ref('rooms/' + room);
   setStatus('connecting');
   roomRef.on('value', snap => {
     const data = snap.val();
     if(!data || !data.state){
-      // ห้องใหม่ยังว่าง — ดันสถานะปัจจุบันขึ้นไปตั้งต้น
+      // ห้องว่าง — คนแรกที่เปิด (คนสร้างห้อง) ได้สิทธิ์หัวกิล
+      if(!adminKey) adminKey = urlKey || randRoomId();
+      isAdmin = true;
+      history.replaceState(null, '', '#'+room+'~'+adminKey);
+      setMode();
+      applyingRemote = true; render(); applyingRemote = false;
       scheduleSave();
       return;
     }
+    const wasAdmin = isAdmin;
+    if(data.adminKey){
+      adminKey = data.adminKey;
+      isAdmin = (urlKey === adminKey);
+      if(isAdmin) history.replaceState(null, '', '#'+room+'~'+adminKey);
+    } else {
+      // ห้องรุ่นเก่าที่ยังไม่มีรหัสหัวกิล — คนที่เปิดอยู่ตอนนี้รับสิทธิ์ไป
+      adminKey = urlKey || randRoomId();
+      isAdmin = true;
+      history.replaceState(null, '', '#'+room+'~'+adminKey);
+      scheduleSave();
+    }
+    setMode();
+    if(wasAdmin !== isAdmin){ applyingRemote = true; render(); applyingRemote = false; }
     const incoming = JSON.stringify({t:data.eventTitle||'', m:data.eventTime||'', s:data.state});
     if(incoming === lastSentJSON) return; // echo ของเราเอง
     applyingRemote = true;
