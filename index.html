@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>จัดตี้กิลวอ — Ragnarok: The New World</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700;800&family=Cinzel:wght@600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<style>
+  :root{
+    --bg:#0b0913; --bg2:#151022; --panel:#1d1732; --panel2:#292048;
+    --line:#3d3263; --gold:#e8b64c; --gold2:#f6d78a; --gold3:#8a5a16;
+    --red:#e05555; --text:#f1ecfa; --muted:#9d94b8; --ok:#6fce8f; --etc:#9d94b8;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    font-family:'Kanit','Segoe UI',Tahoma,'Noto Sans Thai',sans-serif;
+    background:
+      radial-gradient(1100px 620px at 50% -18%, rgba(103,66,190,.34) 0%, transparent 62%),
+      radial-gradient(760px 520px at 108% 104%, rgba(190,70,70,.16) 0%, transparent 60%),
+      radial-gradient(760px 520px at -8% 104%, rgba(60,100,190,.16) 0%, transparent 60%),
+      var(--bg);
+    color:var(--text); min-height:100vh; padding:18px; overflow-x:hidden;
+  }
+  body::before{
+    content:''; position:fixed; inset:0; pointer-events:none; z-index:0;
+    background-image:
+      repeating-linear-gradient(45deg, rgba(255,255,255,.018) 0 1px, transparent 1px 14px),
+      repeating-linear-gradient(-45deg, rgba(255,255,255,.014) 0 1px, transparent 1px 14px);
+  }
+  #fx{position:fixed; inset:0; z-index:0; pointer-events:none;}
+  header,.notice,.toolbar,.layout,.summary,#toast{position:relative; z-index:1;}
+  header{max-width:1280px; margin:0 auto 8px; text-align:center;}
+  header h1{
+    font-size:40px; font-weight:800; letter-spacing:1px; line-height:1.5; padding:4px 0;
+    background:linear-gradient(180deg,#fff3cf 8%, #f2c96a 38%, #9c6b1c 52%, #f6d78a 66%, #fff3cf 100%);
+    background-size:100% 220%;
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    filter:drop-shadow(0 2px 12px rgba(232,182,76,.35));
+    animation:sheen 5s ease-in-out infinite;
+  }
+  @keyframes sheen{0%,100%{background-position:0 0%}50%{background-position:0 60%}}
+  .ornament{
+    display:flex; align-items:center; justify-content:center; gap:12px;
+    color:var(--gold); margin-top:6px;
+  }
+  .ornament::before,.ornament::after{
+    content:''; height:1px; width:min(180px,26vw);
+    background:linear-gradient(90deg, transparent, var(--gold));
+  }
+  .ornament::after{transform:scaleX(-1);}
+  .ornament .sub{
+    font-family:'Cinzel','Kanit',serif; font-size:12px; color:#c4b077;
+    letter-spacing:4px; white-space:nowrap;
+  }
+  .notice{
+    max-width:1280px; margin:10px auto 14px; font-size:12.5px; color:#d8c99a;
+    background:linear-gradient(90deg, rgba(232,182,76,.04), rgba(232,182,76,.13), rgba(232,182,76,.04));
+    border:1px solid rgba(232,182,76,.3); border-left:3px solid var(--gold); border-right:3px solid var(--gold);
+    border-radius:4px; padding:8px 12px; text-align:center;
+  }
+  .toolbar{
+    max-width:1280px; margin:0 auto 16px; display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:center;
+  }
+  .toolbar input[type=text]{
+    background:rgba(18,13,32,.85); border:1px solid var(--line); color:var(--text);
+    border-radius:4px; padding:8px 12px; font-size:14px; font-family:inherit; transition:.2s;
+  }
+  .toolbar input[type=text]:focus{outline:none; border-color:var(--gold); box-shadow:0 0 10px rgba(232,182,76,.25);}
+  #eventTitle{width:250px;} #eventTime{width:210px;}
+  .btn{
+    position:relative; background:linear-gradient(180deg,#3d3268,#251d44);
+    color:var(--text); border:1px solid #4d3f80; border-radius:4px; padding:8px 16px;
+    font-size:13.5px; font-family:inherit; cursor:pointer; transition:.18s; white-space:nowrap;
+    clip-path:polygon(9px 0, 100% 0, 100% calc(100% - 9px), calc(100% - 9px) 100%, 0 100%, 0 9px);
+  }
+  .btn:hover{border-color:var(--gold); color:var(--gold2); box-shadow:0 0 14px rgba(232,182,76,.3); transform:translateY(-1px);}
+  .btn.gold{
+    background:linear-gradient(180deg,#f6d78a,#e8b64c 45%,#c08c28);
+    color:#241c08; font-weight:700; border-color:#f6d78a;
+    box-shadow:0 0 16px rgba(232,182,76,.35), inset 0 1px 0 rgba(255,255,255,.5);
+  }
+  .btn.gold:hover{filter:brightness(1.12); color:#241c08;}
+  .btn.small{padding:4px 10px; font-size:12px;}
+  .layout{
+    max-width:1280px; margin:0 auto; display:grid;
+    grid-template-columns:330px 1fr; gap:16px; align-items:start;
+  }
+  @media(max-width:900px){ .layout{grid-template-columns:1fr;} }
+  .panel{
+    position:relative; background:linear-gradient(180deg,#231b40 0%, #1a142f 100%);
+    border:1px solid #453a72; border-radius:6px; padding:14px;
+    box-shadow:0 10px 34px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.05);
+  }
+  .panel::before,.panel::after,.party::before,.party::after{
+    content:''; position:absolute; width:15px; height:15px; pointer-events:none; z-index:2;
+  }
+  .panel::before,.party::before{top:-2px; left:-2px; border-top:2px solid var(--gold); border-left:2px solid var(--gold);}
+  .panel::after,.party::after{bottom:-2px; right:-2px; border-bottom:2px solid var(--gold); border-right:2px solid var(--gold);}
+  .panel h2{
+    font-size:15px; color:var(--gold2); margin-bottom:10px; letter-spacing:.5px;
+    display:flex; justify-content:space-between; align-items:center;
+    border-bottom:1px solid rgba(232,182,76,.25); padding-bottom:8px;
+  }
+  .panel h2 .count{font-size:12px; color:var(--muted); font-weight:400;}
+  .addrow{display:flex; gap:6px; margin-bottom:8px;}
+  .addrow input, .addrow select{
+    background:rgba(14,10,26,.85); border:1px solid var(--line); color:var(--text);
+    border-radius:4px; padding:8px; font-size:13.5px; min-width:0; font-family:inherit;
+  }
+  .addrow input:focus,.addrow select:focus{outline:none; border-color:var(--gold);}
+  .addrow input{flex:1.2;} .addrow select{flex:1;}
+  #searchBox{width:100%; background:rgba(14,10,26,.85); border:1px solid var(--line); color:var(--text); border-radius:4px; padding:7px 10px; font-size:13px; margin-bottom:10px; font-family:inherit;}
+  #searchBox:focus{outline:none; border-color:var(--gold);}
+  .roster{display:flex; flex-direction:column; gap:6px; max-height:60vh; overflow-y:auto; padding-right:4px;}
+  .roster::-webkit-scrollbar{width:8px;}
+  .roster::-webkit-scrollbar-thumb{background:linear-gradient(180deg,var(--gold3),#453a72); border-radius:4px;}
+  .chip{
+    position:relative; display:flex; align-items:center; gap:8px;
+    background:linear-gradient(135deg,#2d2454 0%, #241d42 60%, #201938 100%);
+    border:1px solid #443a70; border-left:4px solid var(--etc);
+    border-radius:4px; padding:7px 9px; cursor:grab; user-select:none; transition:.15s;
+    overflow:hidden;
+  }
+  .chip::after{
+    content:''; position:absolute; top:0; left:-80%; width:50%; height:100%;
+    background:linear-gradient(105deg, transparent, rgba(255,255,255,.09), transparent);
+    transition:.45s; pointer-events:none;
+  }
+  .chip:hover::after{left:130%;}
+  .chip:active{cursor:grabbing;}
+  .chip:hover{border-color:var(--jc,var(--gold)); box-shadow:0 0 12px color-mix(in srgb, var(--jc,#e8b64c) 40%, transparent); transform:translateY(-1px);}
+  .chip.selected{outline:2px solid var(--gold); box-shadow:0 0 16px rgba(232,182,76,.5);}
+  .chip.assigned{opacity:.4; filter:saturate(.5);}
+  .chip .emoji{font-size:16px;}
+  .jicon{
+    width:27px; height:27px; border-radius:50%; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:inset 0 -2px 4px rgba(0,0,0,.25), 0 0 8px rgba(0,0,0,.35);
+    border:1px solid rgba(255,255,255,.3);
+  }
+  .jicon svg{width:16px; height:16px; display:block;}
+  .chip .info{flex:1; min-width:0;}
+  .chip .nm{display:block; font-size:13.5px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; line-height:1.25;}
+  .chip .jb{display:block; font-size:10.5px; color:var(--muted); line-height:1.2;}
+  .chip .tag{font-size:10.5px; color:var(--gold2); background:rgba(232,182,76,.14); border:1px solid rgba(232,182,76,.3); border-radius:3px; padding:1px 6px; white-space:nowrap;}
+  .chip .del{
+    background:none; border:none; color:var(--muted); cursor:pointer; font-size:14px; padding:2px 4px; border-radius:4px; z-index:1;
+  }
+  .chip .del:hover{color:var(--red); background:rgba(224,85,85,.15);}
+  .parties{display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:14px;}
+  .party{
+    position:relative; background:linear-gradient(180deg,#231b40, #191330);
+    border:1px solid #453a72; border-radius:6px; padding:12px;
+    box-shadow:0 10px 34px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.05);
+  }
+  .party .phead{
+    display:flex; align-items:center; gap:6px; margin-bottom:10px;
+    background:linear-gradient(90deg, rgba(232,182,76,.16), rgba(232,182,76,.03) 70%, transparent);
+    border-left:3px solid var(--gold); padding:5px 8px; border-radius:2px;
+  }
+  .party .phead .flag{font-size:16px; filter:drop-shadow(0 0 6px rgba(232,80,80,.6));}
+  .party .phead input{
+    flex:1; background:transparent; border:none; border-bottom:1px dashed transparent;
+    color:var(--gold2); font-size:16px; font-weight:700; padding:2px 4px; min-width:0; font-family:inherit; letter-spacing:.5px;
+  }
+  .party .phead input:focus{outline:none; border-bottom-color:var(--gold);}
+  .pips{font-size:12px; letter-spacing:2px; color:var(--gold); white-space:nowrap; text-shadow:0 0 6px rgba(232,182,76,.6);}
+  .pips .off{color:#4d4276; text-shadow:none;}
+  .slots{display:flex; flex-direction:column; gap:6px;}
+  .slot{
+    min-height:42px; border:1px dashed #4d4276; border-radius:4px;
+    display:flex; align-items:center; padding:3px 6px; gap:6px; transition:.15s;
+    background:linear-gradient(180deg,#120e22,#181230);
+    box-shadow:inset 0 2px 6px rgba(0,0,0,.4);
+  }
+  .slot .num{font-size:11px; color:#6a5f96; width:16px; text-align:center; flex-shrink:0; font-weight:600;}
+  .slot.dragover{border-color:var(--gold); background:rgba(232,182,76,.12); box-shadow:0 0 14px rgba(232,182,76,.35), inset 0 0 8px rgba(232,182,76,.15);}
+  .slot.empty-click:hover{border-color:var(--gold); cursor:pointer; box-shadow:inset 0 0 10px rgba(232,182,76,.1);}
+  .slot .ph{font-size:12px; color:#544a80; font-style:italic;}
+  .slot .chip{flex:1; padding:4px 7px;}
+  .party .pfoot{display:flex; gap:6px; margin-top:10px; justify-content:flex-end;}
+  .summary{max-width:1280px; margin:16px auto 0; text-align:center; font-size:13px; color:var(--muted); letter-spacing:.3px;}
+  .summary b{color:var(--gold2);}
+  #toast{
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(80px);
+    background:linear-gradient(180deg,#332a58,#241d44); border:1px solid var(--gold); color:var(--gold2);
+    padding:10px 22px; border-radius:4px; font-size:14px; opacity:0; transition:.25s;
+    pointer-events:none; z-index:99; box-shadow:0 8px 30px rgba(0,0,0,.6), 0 0 18px rgba(232,182,76,.25);
+  }
+  #toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+  .rosterwrap.dragover{outline:2px dashed var(--gold); outline-offset:4px; border-radius:6px; box-shadow:0 0 22px rgba(232,182,76,.3);}
+</style>
+</head>
+<body>
+
+<canvas id="fx"></canvas>
+
+<header>
+  <h1>จัดตี้กิลวอ</h1>
+  <div class="ornament"><span class="sub">⚔ RAGNAROK · THE NEW WORLD · WAR OF EMPERIUM ⚔</span></div>
+</header>
+
+<div class="notice" id="noticeBar">🌐 โหมดออนไลน์ — ทุกคนที่เปิดลิงก์ห้องเดียวกันจะเห็นตี้อัปเดตแบบเรียลไทม์ กด "🔗 ก๊อปลิงก์ห้อง" แล้วส่งให้สมาชิกกิลได้เลย</div>
+<div class="notice" id="setupBox" style="display:none; text-align:left; line-height:1.8;">
+  ⚠️ <b>ยังไม่ได้ตั้งค่า Firebase</b> — ตอนนี้ใช้งานแบบออฟไลน์ได้ปกติ (บันทึก/เปิดไฟล์) ถ้าอยากให้ข้อมูลแชร์กันสด ทำตามนี้:<br>
+  1) เข้า <b>console.firebase.google.com</b> → สร้างโปรเจกต์ใหม่ (ฟรี)<br>
+  2) เมนู Build → <b>Realtime Database</b> → Create Database (เลือก asia-southeast1) → เริ่มแบบ <b>Test mode</b><br>
+  3) หน้า Project Overview กดไอคอน <b>&lt;/&gt;</b> (Add web app) → ก๊อปค่า <b>firebaseConfig</b><br>
+  4) เปิดไฟล์นี้ด้วย Notepad แล้ววางค่าแทนที่บล็อก <b>firebaseConfig</b> ที่ทำเครื่องหมายไว้ (หรือส่งค่ามาให้ผมใส่ให้ก็ได้)<br>
+  5) อัปโหลดไฟล์ขึ้น GitHub Pages / Netlify แล้วแชร์ลิงก์ให้กิล
+</div>
+
+<div class="toolbar">
+  <input type="text" id="eventTitle" placeholder="หัวข้อ เช่น กิลวอรอบเย็น สัปดาห์นี้" oninput="scheduleSave()">
+  <input type="text" id="eventTime" placeholder="วัน-เวลานัด เช่น อาทิตย์ 20:00" oninput="scheduleSave()">
+  <button class="btn gold" onclick="copyDiscord()">📋 ก๊อปลง Discord</button>
+  <button class="btn" onclick="exportData()">💾 บันทึกไฟล์</button>
+  <button class="btn" onclick="document.getElementById('importFile').click()">📂 เปิดไฟล์</button>
+  <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+  <button class="btn" onclick="copyRoomLink()">🔗 ก๊อปลิงก์ห้อง</button>
+  <span id="connStatus" style="font-size:12.5px; padding:6px 12px; border:1px solid var(--line); border-radius:4px; color:var(--muted);">⚪ ออฟไลน์</span>
+</div>
+
+<div class="layout">
+  <div class="panel rosterwrap" id="rosterPanel">
+    <h2>👥 สมาชิกกิล <span class="count" id="rosterCount"></span></h2>
+    <div class="addrow">
+      <input type="text" id="newName" placeholder="ชื่อตัวละคร" onkeydown="if(event.key==='Enter')addMember()">
+      <select id="newJob"></select>
+    </div>
+    <div class="addrow">
+      <button class="btn small gold" style="flex:1" onclick="addMember()">➕ เพิ่มสมาชิก</button>
+    </div>
+    <input type="text" id="searchBox" placeholder="🔍 ค้นหาชื่อ / อาชีพ..." oninput="render()">
+    <div class="roster" id="rosterList"></div>
+  </div>
+
+  <div>
+    <div class="parties" id="partiesArea"></div>
+    <div style="text-align:center; margin-top:14px;">
+      <button class="btn" onclick="addParty()">➕ เพิ่มตี้ใหม่</button>
+    </div>
+  </div>
+</div>
+
+<div class="summary" id="summaryBar"></div>
+<div id="toast"></div>
+
+<script>
+const JOBS = [
+  {name:'อัศวิน (Knight)',       emoji:'⚔️', color:'#e0725c',
+   icon:'<path d="M20 4 9 15"/><path d="M6.5 12.5 11.5 17.5"/><path d="M8.5 15.5 5 19"/><circle cx="4.5" cy="19.5" r="1" fill="#191430" stroke="none"/>'},
+  {name:'ครูเสด (Crusader)',     emoji:'🛡️', color:'#f0996a',
+   icon:'<path d="M12 3l7 3v5c0 5-3.5 8-7 10-3.5-2-7-5-7-10V6z"/><path d="M12 7v8M8.5 10.5h7"/>'},
+  {name:'วิซาร์ด (Wizard)',      emoji:'🔮', color:'#7f9df0',
+   icon:'<path d="M5 18h14"/><path d="M12 3l5 12H7z"/><path d="M12 3v4"/>'},
+  {name:'เซจ (Sage)',            emoji:'📖', color:'#9db8f5',
+   icon:'<path d="M4 5h5a3 3 0 013 3v11a3 3 0 00-3-3H4z"/><path d="M20 5h-5a3 3 0 00-3 3v11a3 3 0 013-3h5z"/>'},
+  {name:'ฮันเตอร์ (Hunter)',     emoji:'🏹', color:'#8fce6f',
+   icon:'<path d="M7 3c8 5 8 13 0 18"/><path d="M7 3v18"/><path d="M9.5 12H20"/><path d="M17 9l3 3-3 3"/>'},
+  {name:'บาร์ด (Bard)',          emoji:'🎸', color:'#aad98a',
+   icon:'<path d="M9 18V6l9-2.5V16"/><circle cx="7" cy="18" r="2"/><circle cx="16" cy="16" r="2"/>'},
+  {name:'แดนเซอร์ (Dancer)',     emoji:'💃', color:'#c8e39a',
+   icon:'<path d="M4 18c5 4 11-1 8.5-5S6 10 9 7.5 17 5 20 9"/><circle cx="20" cy="6.5" r="1.4" fill="#191430" stroke="none"/>'},
+  {name:'พรีสต์ (Priest)',       emoji:'✨', color:'#f0e08a',
+   icon:'<path d="M12 4v16"/><path d="M7 9h10"/>'},
+  {name:'มังค์ (Monk)',          emoji:'👊', color:'#f5d9a8',
+   icon:'<circle cx="12" cy="12" r="3.2"/><path d="M12 3.5v2.5M12 18v2.5M3.5 12H6M18 12h2.5M6 6l1.8 1.8M16.2 16.2 18 18M18 6l-1.8 1.8M7.8 16.2 6 18"/>'},
+  {name:'แบล็คสมิธ (Blacksmith)',emoji:'🔨', color:'#e6a35c',
+   icon:'<path d="M13.5 4.5l6 6-3.5 3.5-6-6z"/><path d="M11.5 9.5 4 19.5"/>'},
+  {name:'อัลเคมิสต์ (Alchemist)',emoji:'🧪', color:'#f0c07a',
+   icon:'<path d="M10 3h4"/><path d="M11 3v6l-5.5 9.2A1.6 1.6 0 006.9 21h10.2a1.6 1.6 0 001.4-2.8L13 9V3"/><path d="M8 15h8"/>'},
+  {name:'แอสแซสซิน (Assassin)',  emoji:'🗡️', color:'#c07fe0',
+   icon:'<path d="M5 5l14 14"/><path d="M19 5 5 19"/><path d="M9.8 7 7 9.8M17 14.2 14.2 17"/>'},
+  {name:'โร้ก (Rogue)',          emoji:'🎭', color:'#d69ff0',
+   icon:'<path d="M3 10.5c3-2.5 15-2.5 18 0v2.5c0 3-2.8 4.8-5 3.6L12 15l-4 1.6c-2.2 1.2-5-.6-5-3.6z"/><circle cx="8.3" cy="12.6" r=".9" fill="#191430" stroke="none"/><circle cx="15.7" cy="12.6" r=".9" fill="#191430" stroke="none"/>'},
+  {name:'อื่น ๆ',                emoji:'❔', color:'#9d94b8',
+   icon:'<path d="M8.8 9a3.2 3.2 0 115.4 2.3c-1 1-2.2 1.6-2.2 3.2"/><circle cx="12" cy="18.2" r="1.1" fill="#191430" stroke="none"/>'},
+];
+function iconHTML(ji){
+  return `<span class="jicon" style="background:${ji.color}">`+
+    `<svg viewBox="0 0 24 24" fill="none" stroke="#191430" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">${ji.icon}</svg></span>`;
+}
+const PARTY_SIZE = 5;
+
+let state = {
+  members: [],   // {id, name, job}
+  parties: [],   // {id, name, slots:[memberId|null x5]}
+  nextId: 1,
+};
+let selectedMemberId = null;
+
+// ---------- helpers ----------
+const jobInfo = j => JOBS.find(x => x.name === j) || JOBS[JOBS.length-1];
+const memberById = id => state.members.find(m => m.id === id);
+function partyOf(memberId){
+  for(const p of state.parties){
+    const i = p.slots.indexOf(memberId);
+    if(i !== -1) return {party:p, slotIndex:i};
+  }
+  return null;
+}
+function removeFromParty(memberId){
+  const loc = partyOf(memberId);
+  if(loc) loc.party.slots[loc.slotIndex] = null;
+}
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._tm); t._tm = setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+// ---------- members ----------
+function addMember(){
+  const nameEl = document.getElementById('newName');
+  const name = nameEl.value.trim();
+  const job = document.getElementById('newJob').value;
+  if(!name){ toast('⚠️ ใส่ชื่อตัวละครก่อนนะ'); return; }
+  if(state.members.some(m => m.name === name)){ toast('⚠️ มีชื่อนี้อยู่แล้ว'); return; }
+  state.members.push({id: state.nextId++, name, job});
+  nameEl.value = ''; nameEl.focus();
+  render();
+}
+function deleteMember(id){
+  removeFromParty(id);
+  state.members = state.members.filter(m => m.id !== id);
+  if(selectedMemberId === id) selectedMemberId = null;
+  render();
+}
+
+// ---------- parties ----------
+function addParty(){
+  state.parties.push({id: state.nextId++, name:'ตี้ '+(state.parties.length+1), slots:Array(PARTY_SIZE).fill(null)});
+  render();
+}
+function deleteParty(pid){
+  state.parties = state.parties.filter(p => p.id !== pid);
+  render();
+}
+function clearParty(pid){
+  const p = state.parties.find(x => x.id === pid);
+  if(p) p.slots = Array(PARTY_SIZE).fill(null);
+  render();
+}
+function assignToSlot(memberId, partyId, slotIndex){
+  const p = state.parties.find(x => x.id === partyId);
+  if(!p) return;
+  const occupant = p.slots[slotIndex];
+  if(occupant === memberId) return;
+  const prevLoc = partyOf(memberId);
+  removeFromParty(memberId);
+  if(occupant !== null){
+    // swap: occupant goes where dragged member came from (or back to roster)
+    if(prevLoc) prevLoc.party.slots[prevLoc.slotIndex] = occupant;
+    else removeFromParty(occupant); // just unassign occupant is wrong; set below
+    if(!prevLoc){
+      // dragged from roster -> occupant returns to roster
+      p.slots[slotIndex] = null;
+    }
+  }
+  p.slots[slotIndex] = memberId;
+  selectedMemberId = null;
+  render();
+}
+
+// ---------- drag & drop ----------
+function onDragStart(ev, memberId){
+  ev.dataTransfer.setData('text/plain', String(memberId));
+  ev.dataTransfer.effectAllowed = 'move';
+}
+function onSlotDrop(ev, partyId, slotIndex){
+  ev.preventDefault();
+  ev.currentTarget.classList.remove('dragover');
+  const id = parseInt(ev.dataTransfer.getData('text/plain'), 10);
+  if(!isNaN(id)) assignToSlot(id, partyId, slotIndex);
+}
+function onRosterDrop(ev){
+  ev.preventDefault();
+  document.getElementById('rosterPanel').classList.remove('dragover');
+  const id = parseInt(ev.dataTransfer.getData('text/plain'), 10);
+  if(!isNaN(id)){ removeFromParty(id); render(); }
+}
+
+// ---------- click-to-assign (มือถือ) ----------
+function onChipClick(memberId){
+  selectedMemberId = (selectedMemberId === memberId) ? null : memberId;
+  render();
+}
+function onSlotClick(partyId, slotIndex){
+  if(selectedMemberId !== null) assignToSlot(selectedMemberId, partyId, slotIndex);
+}
+
+// ---------- render ----------
+function chipHTML(m, inSlot){
+  const ji = jobInfo(m.job);
+  const loc = partyOf(m.id);
+  const sel = selectedMemberId === m.id ? ' selected' : '';
+  const asg = (!inSlot && loc) ? ' assigned' : '';
+  const tag = (!inSlot && loc) ? `<span class="tag">${esc(loc.party.name)}</span>` : '';
+  const delBtn = inSlot
+    ? `<button class="del" title="เอาออกจากตี้" onclick="event.stopPropagation();removeFromParty(${m.id});render()">✕</button>`
+    : `<button class="del" title="ลบสมาชิก" onclick="event.stopPropagation();deleteMember(${m.id})">🗑</button>`;
+  return `<div class="chip${sel}${asg}" style="--jc:${ji.color};border-left-color:${ji.color}" draggable="true"
+    ondragstart="onDragStart(event,${m.id})" onclick="onChipClick(${m.id})">
+    ${iconHTML(ji)}
+    <span class="info"><span class="nm">${esc(m.name)}</span><span class="jb">${esc(m.job)}</span></span>
+    ${tag}${delBtn}</div>`;
+}
+function esc(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function render(){
+  // job dropdown (once)
+  const sel = document.getElementById('newJob');
+  if(!sel.options.length)
+    sel.innerHTML = JOBS.map(j => `<option value="${j.name}">${j.emoji} ${j.name}</option>`).join('');
+
+  // roster
+  const q = document.getElementById('searchBox').value.trim().toLowerCase();
+  const list = state.members.filter(m => !q || m.name.toLowerCase().includes(q) || m.job.toLowerCase().includes(q));
+  document.getElementById('rosterList').innerHTML =
+    list.length ? list.map(m => chipHTML(m,false)).join('')
+    : `<div style="color:#5d5480;font-size:13px;text-align:center;padding:14px 0;font-style:italic">${state.members.length? 'ไม่พบที่ค้นหา' : 'ยังไม่มีสมาชิก — เพิ่มชื่อด้านบนได้เลย'}</div>`;
+  const assignedCount = state.members.filter(m => partyOf(m.id)).length;
+  document.getElementById('rosterCount').textContent = `ทั้งหมด ${state.members.length} คน · ลงตี้แล้ว ${assignedCount}`;
+
+  // parties
+  document.getElementById('partiesArea').innerHTML = state.parties.map(p => `
+    <div class="party">
+      <div class="phead"><span class="flag">🚩</span>
+        <input value="${esc(p.name)}" onchange="renameParty(${p.id},this.value)">
+        <span class="pips" title="${p.slots.filter(s=>s!==null).length}/${PARTY_SIZE}">${p.slots.map(s=>s!==null?'◆':'<span class="off">◇</span>').join('')}</span>
+      </div>
+      <div class="slots">
+        ${p.slots.map((mid,i) => {
+          const m = mid !== null ? memberById(mid) : null;
+          return `<div class="slot ${m?'':'empty-click'}" ondragover="event.preventDefault();this.classList.add('dragover')"
+            ondragleave="this.classList.remove('dragover')" ondrop="onSlotDrop(event,${p.id},${i})"
+            onclick="onSlotClick(${p.id},${i})">
+            <span class="num">${i+1}</span>
+            ${m ? chipHTML(m,true) : '<span class="ph">— ว่าง (ลากมาวาง หรือคลิกเลือกชื่อแล้วคลิกที่นี่) —</span>'}
+          </div>`;
+        }).join('')}
+      </div>
+      <div class="pfoot">
+        <button class="btn small" onclick="copyOneParty(${p.id})">📋 ก๊อปตี้นี้</button>
+        <button class="btn small" onclick="clearParty(${p.id})">↩ เคลียร์</button>
+        <button class="btn small" onclick="deleteParty(${p.id})">🗑 ลบตี้</button>
+      </div>
+    </div>`).join('');
+
+  // summary
+  const un = state.members.length - assignedCount;
+  document.getElementById('summaryBar').innerHTML =
+    `สมาชิกทั้งหมด <b>${state.members.length}</b> คน · ลงตี้แล้ว <b>${assignedCount}</b> · ยังไม่มีตี้ <b>${un}</b> · จำนวนตี้ <b>${state.parties.length}</b>`;
+
+  scheduleSave(); // sync ขึ้นห้องออนไลน์ (ถ้าเชื่อมต่ออยู่)
+}
+function renameParty(pid, name){
+  const p = state.parties.find(x => x.id === pid);
+  if(p){ p.name = name.trim() || p.name; render(); }
+}
+
+// ---------- Discord export ----------
+function partyText(p, idx){
+  const lines = [`🚩 **${p.name}**`];
+  p.slots.forEach((mid,i) => {
+    if(mid !== null){
+      const m = memberById(mid); const ji = jobInfo(m.job);
+      lines.push(`> ${i+1}. ${ji.emoji} **${m.name}** — ${m.job}`);
+    } else {
+      lines.push(`> ${i+1}. ⬜ ว่าง`);
+    }
+  });
+  return lines.join('\n');
+}
+function buildDiscordText(){
+  const title = document.getElementById('eventTitle').value.trim();
+  const time  = document.getElementById('eventTime').value.trim();
+  const parts = [];
+  parts.push(`⚔️🏰 __**จัดตี้กิลวอ${title ? ' — '+title : ''}**__ 🏰⚔️`);
+  if(time) parts.push(`🗓️ นัดหมาย: **${time}**`);
+  parts.push('');
+  state.parties.forEach((p,i) => { parts.push(partyText(p,i)); parts.push(''); });
+  const un = state.members.filter(m => !partyOf(m.id));
+  if(un.length) parts.push(`👥 ยังไม่มีตี้: ${un.map(m=>m.name).join(', ')}`);
+  return parts.join('\n').trim();
+}
+function copyText(txt, msg){
+  const done = () => toast(msg);
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(txt).then(done).catch(()=>fallbackCopy(txt, done));
+  } else fallbackCopy(txt, done);
+}
+function fallbackCopy(txt, done){
+  const ta = document.createElement('textarea');
+  ta.value = txt; document.body.appendChild(ta); ta.select();
+  try{ document.execCommand('copy'); done(); } catch(e){ toast('❌ ก๊อปไม่สำเร็จ'); }
+  document.body.removeChild(ta);
+}
+function copyDiscord(){
+  if(!state.parties.length){ toast('⚠️ ยังไม่มีตี้เลยนะ'); return; }
+  copyText(buildDiscordText(), '✅ ก๊อปแล้ว! วางใน Discord ได้เลย');
+}
+function copyOneParty(pid){
+  const p = state.parties.find(x => x.id === pid);
+  if(p) copyText(partyText(p), `✅ ก๊อป "${p.name}" แล้ว`);
+}
+
+// ---------- save / load ----------
+function exportData(){
+  const data = {
+    app:'ro-tnw-guildwar-party', version:1,
+    eventTitle: document.getElementById('eventTitle').value,
+    eventTime:  document.getElementById('eventTime').value,
+    state,
+  };
+  const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'guildwar-party.json';
+  a.click(); URL.revokeObjectURL(a.href);
+  toast('💾 บันทึกไฟล์แล้ว');
+}
+function importData(ev){
+  const file = ev.target.files[0];
+  if(!file) return;
+  const fr = new FileReader();
+  fr.onload = () => {
+    try{
+      const data = JSON.parse(fr.result);
+      if(!data.state || !Array.isArray(data.state.members)) throw new Error('bad');
+      state = data.state;
+      if(!state.nextId) state.nextId = Math.max(0, ...state.members.map(m=>m.id), ...state.parties.map(p=>p.id)) + 1;
+      document.getElementById('eventTitle').value = data.eventTitle || '';
+      document.getElementById('eventTime').value  = data.eventTime || '';
+      selectedMemberId = null;
+      render();
+      toast('📂 โหลดข้อมูลแล้ว');
+    } catch(e){ toast('❌ ไฟล์ไม่ถูกต้อง'); }
+  };
+  fr.readAsText(file);
+  ev.target.value = '';
+}
+
+// roster เป็นจุด drop เพื่อ "เอาออกจากตี้"
+const rp = document.getElementById('rosterPanel');
+rp.addEventListener('dragover', e => { e.preventDefault(); rp.classList.add('dragover'); });
+rp.addEventListener('dragleave', () => rp.classList.remove('dragover'));
+rp.addEventListener('drop', onRosterDrop);
+
+// ========================================================================
+// ⚙️ วางค่า Firebase Config ของคุณแทนที่บล็อกด้านล่างนี้ (จาก Firebase Console)
+// ========================================================================
+const firebaseConfig = {
+  apiKey: "AIzaSyDoNcMvM9nfnznDPO3qS4jDeRraoXsQxiQ",
+  authDomain: "rothenewworldlonza.firebaseapp.com",
+  databaseURL: "https://rothenewworldlonza-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "rothenewworldlonza",
+  storageBucket: "rothenewworldlonza.firebasestorage.app",
+  messagingSenderId: "256528266626",
+  appId: "1:256528266626:web:c481d14df23ece56384b9b",
+  measurementId: "G-V7WQHV5MLX"
+};
+// ========================================================================
+
+let roomRef = null, applyingRemote = false, saveTm = null, lastSentJSON = '';
+
+function setStatus(mode){
+  const el = document.getElementById('connStatus');
+  if(mode === 'online'){ el.textContent = '🟢 ออนไลน์'; el.style.color = 'var(--ok)'; el.style.borderColor = 'var(--ok)'; }
+  else if(mode === 'connecting'){ el.textContent = '🟡 กำลังเชื่อมต่อ...'; el.style.color = 'var(--gold2)'; el.style.borderColor = 'var(--gold)'; }
+  else { el.textContent = '⚪ ออฟไลน์'; el.style.color = 'var(--muted)'; el.style.borderColor = 'var(--line)'; }
+}
+function randRoomId(){
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  let id = '';
+  const buf = new Uint8Array(20); crypto.getRandomValues(buf);
+  for(const b of buf) id += chars[b % chars.length];
+  return id;
+}
+// Firebase ตัดค่า null/array ว่างทิ้ง — แปลงไป-กลับให้โครงสร้างครบเสมอ
+function serializeState(){
+  return {
+    members: state.members.map(m => ({id:m.id, name:m.name, job:m.job})),
+    parties: state.parties.map(p => ({id:p.id, name:p.name, slots:p.slots.map(s => s === null ? -1 : s)})),
+    nextId: state.nextId,
+  };
+}
+function normalizeState(raw){
+  const members = Object.values(raw.members || {}).filter(Boolean);
+  const parties = Object.values(raw.parties || {}).filter(Boolean).map(p => {
+    const src = p.slots ? Object.values(p.slots) : [];
+    const slots = Array.from({length:PARTY_SIZE}, (_,i) => {
+      const v = src[i];
+      return (v === undefined || v === null || v === -1) ? null : v;
+    });
+    return {id:p.id, name:p.name || 'ตี้', slots};
+  });
+  const nextId = raw.nextId || Math.max(0, ...members.map(m=>m.id), ...parties.map(p=>p.id)) + 1;
+  return {members, parties, nextId};
+}
+function scheduleSave(){
+  if(!roomRef || applyingRemote) return;
+  clearTimeout(saveTm);
+  saveTm = setTimeout(() => {
+    const payload = {
+      eventTitle: document.getElementById('eventTitle').value,
+      eventTime:  document.getElementById('eventTime').value,
+      state: serializeState(),
+      updatedAt: firebase.database.ServerValue.TIMESTAMP,
+    };
+    lastSentJSON = JSON.stringify({t:payload.eventTitle, m:payload.eventTime, s:payload.state});
+    roomRef.set(payload).catch(() => toast('⚠️ ส่งข้อมูลไม่สำเร็จ เช็คอินเทอร์เน็ต/สิทธิ์ฐานข้อมูล'));
+  }, 350);
+}
+function copyRoomLink(){
+  if(!roomRef){ toast('⚠️ ยังไม่ได้ตั้งค่า Firebase — ดูวิธีในกรอบเหลืองด้านบน'); return; }
+  copyText(location.href, '✅ ก๊อปลิงก์ห้องแล้ว! ส่งให้สมาชิกกิลได้เลย');
+}
+function initOnline(){
+  const configured = typeof firebase !== 'undefined'
+    && firebaseConfig.apiKey && !firebaseConfig.apiKey.includes('PASTE') && firebaseConfig.databaseURL;
+  if(!configured){
+    document.getElementById('setupBox').style.display = 'block';
+    document.getElementById('noticeBar').innerHTML = '💾 ตอนนี้อยู่โหมดออฟไลน์ — จัดตี้เสร็จอย่าลืมกด "บันทึกไฟล์" เก็บไว้';
+    setStatus('offline');
+    return;
+  }
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+  let room = location.hash.slice(1).replace(/[^a-z0-9_-]/gi,'');
+  if(!room){ room = randRoomId(); history.replaceState(null, '', '#'+room); }
+  roomRef = db.ref('rooms/' + room);
+  setStatus('connecting');
+  roomRef.on('value', snap => {
+    const data = snap.val();
+    if(!data || !data.state){
+      // ห้องใหม่ยังว่าง — ดันสถานะปัจจุบันขึ้นไปตั้งต้น
+      scheduleSave();
+      return;
+    }
+    const incoming = JSON.stringify({t:data.eventTitle||'', m:data.eventTime||'', s:data.state});
+    if(incoming === lastSentJSON) return; // echo ของเราเอง
+    applyingRemote = true;
+    state = normalizeState(data.state);
+    const et = document.getElementById('eventTitle'), em = document.getElementById('eventTime');
+    if(document.activeElement !== et) et.value = data.eventTitle || '';
+    if(document.activeElement !== em) em.value = data.eventTime || '';
+    if(selectedMemberId !== null && !memberById(selectedMemberId)) selectedMemberId = null;
+    render();
+    applyingRemote = false;
+  }, () => { setStatus('offline'); toast('⚠️ เชื่อมต่อฐานข้อมูลไม่ได้'); });
+  db.ref('.info/connected').on('value', s => setStatus(s.val() ? 'online' : 'connecting'));
+}
+
+// ประกายไฟลอย (ember particles)
+(function(){
+  const fx = document.getElementById('fx'), ctx = fx.getContext('2d');
+  let W, H;
+  const rs = () => { W = fx.width = innerWidth; H = fx.height = innerHeight; };
+  addEventListener('resize', rs); rs();
+  const ps = [];
+  for(let i=0;i<42;i++) ps.push({
+    x: Math.random()*W, y: Math.random()*H,
+    r: Math.random()*1.8+.6, s: Math.random()*.45+.12,
+    a: Math.random()*.4+.12, w: Math.random()*6.28,
+  });
+  (function tick(){
+    ctx.clearRect(0,0,W,H);
+    for(const p of ps){
+      p.y -= p.s; p.w += .012; p.x += Math.sin(p.w)*.35;
+      if(p.y < -10){ p.y = H+10; p.x = Math.random()*W; }
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,6.283);
+      ctx.fillStyle = `rgba(232,182,76,${p.a})`; ctx.fill();
+    }
+    requestAnimationFrame(tick);
+  })();
+})();
+
+// เริ่มต้นด้วยตี้ว่าง 2 ตี้ แล้วต่อห้องออนไลน์
+addParty(); addParty();
+render();
+initOnline();
+</script>
+</body>
+</html>
