@@ -11,16 +11,16 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <style>
   :root{
-    --bg:#0b0913; --bg2:#151022; --panel:#1d1732; --panel2:#292048;
-    --line:#3d3263; --gold:#e8b64c; --gold2:#f6d78a; --gold3:#8a5a16;
-    --red:#e05555; --text:#f1ecfa; --muted:#9d94b8; --ok:#6fce8f; --etc:#9d94b8;
+    --bg:#0a0e1c; --bg2:#101a30; --panel:#16203a; --panel2:#1d2c4d;
+    --line:#33517e; --gold:#7dc4ff; --gold2:#ffc2e0; --gold3:#3a6ea8;
+    --red:#e05555; --pink:#ff8fc7; --pink2:#ffc2e0; --text:#eef4ff; --muted:#9fb3d9; --ok:#6fce8f; --etc:#9fb3d9;
   }
   *{box-sizing:border-box; margin:0; padding:0;}
   body{
     font-family:'Kanit','Segoe UI',Tahoma,'Noto Sans Thai',sans-serif;
     background:
-      radial-gradient(1100px 620px at 50% -18%, rgba(103,66,190,.34) 0%, transparent 62%),
-      radial-gradient(760px 520px at 108% 104%, rgba(190,70,70,.16) 0%, transparent 60%),
+      radial-gradient(1100px 620px at 50% -18%, rgba(70,130,230,.30) 0%, transparent 62%),
+      radial-gradient(760px 520px at 108% 104%, rgba(255,110,180,.15) 0%, transparent 60%),
       radial-gradient(760px 520px at -8% 104%, rgba(60,100,190,.16) 0%, transparent 60%),
       var(--bg);
     color:var(--text); min-height:100vh; padding:18px; overflow-x:hidden;
@@ -31,15 +31,23 @@
       repeating-linear-gradient(45deg, rgba(255,255,255,.018) 0 1px, transparent 1px 14px),
       repeating-linear-gradient(-45deg, rgba(255,255,255,.014) 0 1px, transparent 1px 14px);
   }
+  body::after{
+    content:''; position:fixed; inset:-15%; z-index:0; pointer-events:none;
+    background:
+      radial-gradient(520px 400px at 18% 28%, rgba(90,160,255,.13), transparent 70%),
+      radial-gradient(560px 420px at 82% 72%, rgba(255,120,190,.13), transparent 70%);
+    animation:aurora 14s ease-in-out infinite alternate;
+  }
+  @keyframes aurora{from{transform:translate(-3%,-2%) scale(1)}to{transform:translate(3%,2%) scale(1.1)}}
   #fx{position:fixed; inset:0; z-index:0; pointer-events:none;}
   header,.notice,.toolbar,.layout,.summary,#toast{position:relative; z-index:1;}
   header{max-width:1280px; margin:0 auto 8px; text-align:center;}
   header h1{
     font-size:40px; font-weight:800; letter-spacing:1px; line-height:1.5; padding:4px 0;
-    background:linear-gradient(180deg,#fff3cf 8%, #f2c96a 38%, #9c6b1c 52%, #f6d78a 66%, #fff3cf 100%);
+    background:linear-gradient(180deg,#e6f4ff 8%, #8fd0ff 38%, #ff8fc7 52%, #ffc2e0 66%, #e6f4ff 100%);
     background-size:100% 220%;
     -webkit-background-clip:text; background-clip:text; color:transparent;
-    filter:drop-shadow(0 2px 12px rgba(232,182,76,.35));
+    filter:drop-shadow(0 2px 12px rgba(125,196,255,.35));
     animation:sheen 5s ease-in-out infinite;
   }
   @keyframes sheen{0%,100%{background-position:0 0%}50%{background-position:0 60%}}
@@ -53,13 +61,13 @@
   }
   .ornament::after{transform:scaleX(-1);}
   .ornament .sub{
-    font-family:'Cinzel','Kanit',serif; font-size:12px; color:#c4b077;
+    font-family:'Cinzel','Kanit',serif; font-size:12px; color:#9fc8e8;
     letter-spacing:4px; white-space:nowrap;
   }
   .notice{
-    max-width:1280px; margin:10px auto 14px; font-size:12.5px; color:#d8c99a;
-    background:linear-gradient(90deg, rgba(232,182,76,.04), rgba(232,182,76,.13), rgba(232,182,76,.04));
-    border:1px solid rgba(232,182,76,.3); border-left:3px solid var(--gold); border-right:3px solid var(--gold);
+    max-width:1280px; margin:10px auto 14px; font-size:12.5px; color:#cfe2ff;
+    background:linear-gradient(90deg, rgba(125,196,255,.04), rgba(125,196,255,.13), rgba(125,196,255,.04));
+    border:1px solid rgba(125,196,255,.3); border-left:3px solid var(--gold); border-right:3px solid var(--gold);
     border-radius:4px; padding:8px 12px; text-align:center;
   }
   .toolbar{
@@ -69,21 +77,21 @@
     background:rgba(18,13,32,.85); border:1px solid var(--line); color:var(--text);
     border-radius:4px; padding:8px 12px; font-size:14px; font-family:inherit; transition:.2s;
   }
-  .toolbar input[type=text]:focus{outline:none; border-color:var(--gold); box-shadow:0 0 10px rgba(232,182,76,.25);}
+  .toolbar input[type=text]:focus{outline:none; border-color:var(--gold); box-shadow:0 0 10px rgba(125,196,255,.25);}
   #eventTitle{width:250px;} #eventTime{width:210px;}
   .btn{
-    position:relative; background:linear-gradient(180deg,#3d3268,#251d44);
-    color:var(--text); border:1px solid #4d3f80; border-radius:4px; padding:8px 16px;
+    position:relative; background:linear-gradient(180deg,#274069,#182849);
+    color:var(--text); border:1px solid #3a5f95; border-radius:4px; padding:8px 16px;
     font-size:13.5px; font-family:inherit; cursor:pointer; transition:.18s; white-space:nowrap;
     clip-path:polygon(9px 0, 100% 0, 100% calc(100% - 9px), calc(100% - 9px) 100%, 0 100%, 0 9px);
   }
-  .btn:hover{border-color:var(--gold); color:var(--gold2); box-shadow:0 0 14px rgba(232,182,76,.3); transform:translateY(-1px);}
+  .btn:hover{border-color:var(--gold); color:var(--gold2); box-shadow:0 0 14px rgba(125,196,255,.3); transform:translateY(-1px);}
   .btn.gold{
-    background:linear-gradient(180deg,#f6d78a,#e8b64c 45%,#c08c28);
-    color:#241c08; font-weight:700; border-color:#f6d78a;
-    box-shadow:0 0 16px rgba(232,182,76,.35), inset 0 1px 0 rgba(255,255,255,.5);
+    background:linear-gradient(180deg,#ffc2e0,#7dc4ff 45%,#e0559e);
+    color:#2b1020; font-weight:700; border-color:#ffc2e0;
+    box-shadow:0 0 16px rgba(125,196,255,.35), inset 0 1px 0 rgba(255,255,255,.5);
   }
-  .btn.gold:hover{filter:brightness(1.12); color:#241c08;}
+  .btn.gold:hover{filter:brightness(1.12); color:#2b1020;}
   .btn.small{padding:4px 10px; font-size:12px;}
   .layout{
     max-width:1280px; margin:0 auto; display:grid;
@@ -91,19 +99,19 @@
   }
   @media(max-width:900px){ .layout{grid-template-columns:1fr;} }
   .panel{
-    position:relative; background:linear-gradient(180deg,#231b40 0%, #1a142f 100%);
-    border:1px solid #453a72; border-radius:6px; padding:14px;
+    position:relative; background:linear-gradient(180deg,#182642 0%, #121b33 100%);
+    border:1px solid #2f4d7e; border-radius:6px; padding:14px;
     box-shadow:0 10px 34px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.05);
   }
   .panel::before,.panel::after,.party::before,.party::after{
     content:''; position:absolute; width:15px; height:15px; pointer-events:none; z-index:2;
   }
   .panel::before,.party::before{top:-2px; left:-2px; border-top:2px solid var(--gold); border-left:2px solid var(--gold);}
-  .panel::after,.party::after{bottom:-2px; right:-2px; border-bottom:2px solid var(--gold); border-right:2px solid var(--gold);}
+  .panel::after,.party::after{bottom:-2px; right:-2px; border-bottom:2px solid var(--pink); border-right:2px solid var(--pink);}
   .panel h2{
     font-size:15px; color:var(--gold2); margin-bottom:10px; letter-spacing:.5px;
     display:flex; justify-content:space-between; align-items:center;
-    border-bottom:1px solid rgba(232,182,76,.25); padding-bottom:8px;
+    border-bottom:1px solid rgba(125,196,255,.25); padding-bottom:8px;
   }
   .panel h2 .count{font-size:12px; color:var(--muted); font-weight:400;}
   .addrow{display:flex; gap:6px; margin-bottom:8px;}
@@ -117,11 +125,11 @@
   #searchBox:focus{outline:none; border-color:var(--gold);}
   .roster{display:flex; flex-direction:column; gap:6px; max-height:72vh; overflow-y:auto; padding-right:4px;}
   .roster::-webkit-scrollbar{width:8px;}
-  .roster::-webkit-scrollbar-thumb{background:linear-gradient(180deg,var(--gold3),#453a72); border-radius:4px;}
+  .roster::-webkit-scrollbar-thumb{background:linear-gradient(180deg,var(--gold3),#2f4d7e); border-radius:4px;}
   .chip{
     position:relative; display:flex; align-items:center; gap:8px; flex-shrink:0;
-    background:linear-gradient(135deg,#2d2454 0%, #241d42 60%, #201938 100%);
-    border:1px solid #443a70; border-left:4px solid var(--etc);
+    background:linear-gradient(135deg,#223458 0%, #1b2a4a 60%, #172440 100%);
+    border:1px solid #31517f; border-left:4px solid var(--etc);
     border-radius:4px; padding:7px 9px; cursor:grab; user-select:none; transition:.15s;
     overflow:hidden;
   }
@@ -132,10 +140,12 @@
   }
   .chip:hover::after{left:130%;}
   .chip:active{cursor:grabbing;}
-  .chip:hover{border-color:var(--jc,var(--gold)); box-shadow:0 0 12px color-mix(in srgb, var(--jc,#e8b64c) 40%, transparent); transform:translateY(-1px);}
-  .chip.selected{outline:2px solid var(--gold); box-shadow:0 0 16px rgba(232,182,76,.5);}
+  .chip:hover{border-color:var(--jc,var(--gold)); box-shadow:0 0 12px color-mix(in srgb, var(--jc,#7dc4ff) 40%, transparent); transform:translateY(-1px);}
+  .chip.selected{outline:2px solid var(--gold); box-shadow:0 0 16px rgba(125,196,255,.5);}
   .chip.assigned{opacity:.4; filter:saturate(.5);}
   .chip .emoji{font-size:16px;}
+  .jwrap{position:relative; width:27px; height:27px; flex-shrink:0; display:flex; align-items:center; justify-content:center;}
+  .jimg{width:27px; height:27px; object-fit:contain; display:block; image-rendering:pixelated; filter:drop-shadow(0 1px 3px rgba(0,0,0,.5));}
   .jicon{
     width:27px; height:27px; border-radius:50%; flex-shrink:0;
     display:flex; align-items:center; justify-content:center;
@@ -146,67 +156,69 @@
   .chip .info{flex:1; min-width:0;}
   .chip .nm{display:block; font-size:13.5px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; line-height:1.25;}
   .chip .jb{display:block; font-size:10.5px; color:var(--muted); line-height:1.2;}
-  .chip .tag{font-size:10.5px; color:var(--gold2); background:rgba(232,182,76,.14); border:1px solid rgba(232,182,76,.3); border-radius:3px; padding:1px 6px; white-space:nowrap;}
+  .chip .tag{font-size:10.5px; color:var(--gold2); background:rgba(125,196,255,.14); border:1px solid rgba(125,196,255,.3); border-radius:3px; padding:1px 6px; white-space:nowrap;}
   .chip .del{
     background:none; border:none; color:var(--muted); cursor:pointer; font-size:14px; padding:2px 4px; border-radius:4px; z-index:1;
   }
   .chip .del:hover{color:var(--red); background:rgba(224,85,85,.15);}
   .parties{display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:14px;}
   .party{
-    position:relative; background:linear-gradient(180deg,#231b40, #191330);
-    border:1px solid #453a72; border-radius:6px; padding:12px;
+    position:relative; background:linear-gradient(180deg,#182642, #111a30);
+    border:1px solid #2f4d7e; border-radius:6px; padding:12px;
     box-shadow:0 10px 34px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.05);
   }
+  .party{transition:transform .2s ease, box-shadow .2s ease;}
+  .party:hover{transform:translateY(-3px); box-shadow:0 14px 40px rgba(0,0,0,.55), 0 0 26px rgba(255,143,199,.16);}
   .party .phead{
     display:flex; align-items:center; gap:6px; margin-bottom:10px;
-    background:linear-gradient(90deg, rgba(232,182,76,.16), rgba(232,182,76,.03) 70%, transparent);
+    background:linear-gradient(90deg, rgba(125,196,255,.16), rgba(125,196,255,.03) 70%, transparent);
     border-left:3px solid var(--gold); padding:5px 8px; border-radius:2px;
   }
-  .party .phead .flag{font-size:16px; filter:drop-shadow(0 0 6px rgba(232,80,80,.6));}
+  .party .phead .flag{font-size:16px; filter:drop-shadow(0 0 6px rgba(255,120,190,.7));}
   .party .phead input{
     flex:1; background:transparent; border:none; border-bottom:1px dashed transparent;
     color:var(--gold2); font-size:16px; font-weight:700; padding:2px 4px; min-width:0; font-family:inherit; letter-spacing:.5px;
   }
   .party .phead input:focus{outline:none; border-bottom-color:var(--gold);}
-  .pips{font-size:12px; letter-spacing:2px; color:var(--gold); white-space:nowrap; text-shadow:0 0 6px rgba(232,182,76,.6);}
-  .pips .off{color:#4d4276; text-shadow:none;}
-  .pnote{width:100%; background:rgba(14,10,26,.6); border:1px dashed #4d4276; border-radius:4px; color:#c9bfe0; font-family:inherit; font-size:12px; padding:4px 8px; margin-bottom:8px;}
+  .pips{font-size:12px; letter-spacing:2px; color:var(--pink); white-space:nowrap; text-shadow:0 0 7px rgba(255,143,199,.7);}
+  .pips .off{color:#3b5c8c; text-shadow:none;}
+  .pnote{width:100%; background:rgba(14,10,26,.6); border:1px dashed #3b5c8c; border-radius:4px; color:#c6d8f2; font-family:inherit; font-size:12px; padding:4px 8px; margin-bottom:8px;}
   .pnote:focus{outline:none; border-color:var(--gold);}
   .comp{display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; font-size:11.5px;}
   .comp span{background:rgba(255,255,255,.06); border:1px solid var(--line); border-radius:3px; padding:1px 7px; color:var(--muted);}
   .comp span.warn{color:#ffb3b3; border-color:rgba(224,85,85,.55); background:rgba(224,85,85,.12);}
   .slots{display:flex; flex-direction:column; gap:6px;}
   .slot{
-    min-height:42px; border:1px dashed #4d4276; border-radius:4px;
+    min-height:42px; border:1px dashed #3b5c8c; border-radius:4px;
     display:flex; align-items:center; padding:3px 6px; gap:6px; transition:.15s;
-    background:linear-gradient(180deg,#120e22,#181230);
+    background:linear-gradient(180deg,#0e1628,#122040);
     box-shadow:inset 0 2px 6px rgba(0,0,0,.4);
   }
-  .slot .num{font-size:11px; color:#6a5f96; width:16px; text-align:center; flex-shrink:0; font-weight:600;}
-  .slot.dragover{border-color:var(--gold); background:rgba(232,182,76,.12); box-shadow:0 0 14px rgba(232,182,76,.35), inset 0 0 8px rgba(232,182,76,.15);}
-  .slot.empty-click:hover{border-color:var(--gold); cursor:pointer; box-shadow:inset 0 0 10px rgba(232,182,76,.1);}
-  .slot .ph{font-size:12px; color:#544a80; font-style:italic;}
+  .slot .num{font-size:11px; color:#5f7fae; width:16px; text-align:center; flex-shrink:0; font-weight:600;}
+  .slot.dragover{border-color:var(--pink); background:rgba(255,143,199,.14); box-shadow:0 0 16px rgba(255,143,199,.45), inset 0 0 8px rgba(255,143,199,.18);}
+  .slot.empty-click:hover{border-color:var(--gold); cursor:pointer; box-shadow:inset 0 0 10px rgba(125,196,255,.1);}
+  .slot .ph{font-size:12px; color:#4d6a95; font-style:italic;}
   .slot .chip{flex:1; padding:4px 7px;}
   .party .pfoot{display:flex; gap:6px; margin-top:10px; justify-content:flex-end;}
   .summary{max-width:1280px; margin:16px auto 0; text-align:center; font-size:13px; color:var(--muted); letter-spacing:.3px;}
   .summary b{color:var(--gold2);}
   #toast{
     position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(80px);
-    background:linear-gradient(180deg,#332a58,#241d44); border:1px solid var(--gold); color:var(--gold2);
+    background:linear-gradient(180deg,#1d2c4d,#16203a); border:1px solid var(--gold); color:var(--gold2);
     padding:10px 22px; border-radius:4px; font-size:14px; opacity:0; transition:.25s;
-    pointer-events:none; z-index:99; box-shadow:0 8px 30px rgba(0,0,0,.6), 0 0 18px rgba(232,182,76,.25);
+    pointer-events:none; z-index:99; box-shadow:0 8px 30px rgba(0,0,0,.6), 0 0 18px rgba(125,196,255,.25);
   }
   #toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
   .adm{display:none;}
   body.admin .adm{display:inline-block;}
   body.member .pfoot, body.member #partyMgmtRow, body.member #saveBtn, body.member #openBtn, body.member .slot .del{display:none !important;}
-  body.member .slot.empty-click:hover{border-color:#4d4276; cursor:default; box-shadow:inset 0 2px 6px rgba(0,0,0,.4);}
+  body.member .slot.empty-click:hover{border-color:#3b5c8c; cursor:default; box-shadow:inset 0 2px 6px rgba(0,0,0,.4);}
   body.member .chip{cursor:default;}
   .att{background:none; border:none; cursor:pointer; font-size:13px; padding:2px 3px; border-radius:4px;}
   .att:hover{background:rgba(255,255,255,.12);}
   .chip.att-no{opacity:.5; filter:saturate(.4);}
   .chip.att-no .nm{text-decoration:line-through;}
-  .rosterwrap.dragover{outline:2px dashed var(--gold); outline-offset:4px; border-radius:6px; box-shadow:0 0 22px rgba(232,182,76,.3);}
+  .rosterwrap.dragover{outline:2px dashed var(--gold); outline-offset:4px; border-radius:6px; box-shadow:0 0 22px rgba(125,196,255,.3);}
 </style>
 </head>
 <body>
@@ -228,10 +240,14 @@
   5) อัปโหลดไฟล์ขึ้น GitHub Pages / Netlify แล้วแชร์ลิงก์ให้กิล
 </div>
 
+<div class="notice" id="announceBar" style="display:none; font-size:14.5px; font-weight:600; border-color:var(--pink); color:#ffd7ea; background:linear-gradient(90deg, rgba(255,143,199,.08), rgba(255,143,199,.18), rgba(255,143,199,.08));"></div>
+
 <div class="toolbar">
   <input type="text" id="eventTitle" placeholder="หัวข้อ เช่น กิลวอรอบเย็น สัปดาห์นี้" oninput="scheduleSave()">
   <input type="text" id="eventTime" placeholder="วัน-เวลานัด เช่น อาทิตย์ 20:00" oninput="scheduleSave()">
   <button class="btn gold" onclick="copyDiscord()">📋 ก๊อปลง Discord</button>
+  <button class="btn adm" onclick="sendWebhook()">🚀 ส่งเข้า Discord</button>
+  <button class="btn adm" onclick="setAnnounce()">📣 ประกาศ</button>
   <button class="btn" id="saveBtn" onclick="exportData()">💾 บันทึกไฟล์</button>
   <button class="btn" id="openBtn" onclick="document.getElementById('importFile').click()">📂 เปิดไฟล์</button>
   <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
@@ -274,6 +290,7 @@
       <button class="btn gold" onclick="autoArrange()">🎲 จัดตี้อัตโนมัติ</button>
       <button class="btn" onclick="clearAllParties()">♻️ เคลียร์ทุกตี้</button>
       <button class="btn" onclick="undoLast()">↩️ ย้อนกลับ</button>
+      <button class="btn" onclick="resetAtt()">🔄 รีเซ็ตเช็คชื่อ</button>
     </div>
   </div>
 </div>
@@ -283,42 +300,45 @@
 
 <script>
 const JOBS = [
-  {name:'อัศวิน (Knight)',       emoji:'⚔️', color:'#e0725c',
+  {name:'อัศวิน (Knight)', file:'knight.png',       emoji:'⚔️', color:'#e0725c',
    icon:'<path d="M20 4 9 15"/><path d="M6.5 12.5 11.5 17.5"/><path d="M8.5 15.5 5 19"/><circle cx="4.5" cy="19.5" r="1" fill="#191430" stroke="none"/>'},
-  {name:'ครูเสด (Crusader)',     emoji:'🛡️', color:'#f0996a',
+  {name:'ครูเสด (Crusader)', file:'crusader.png',     emoji:'🛡️', color:'#f0996a',
    icon:'<path d="M12 3l7 3v5c0 5-3.5 8-7 10-3.5-2-7-5-7-10V6z"/><path d="M12 7v8M8.5 10.5h7"/>'},
-  {name:'วิซาร์ด (Wizard)',      emoji:'🔮', color:'#7f9df0',
+  {name:'วิซาร์ด (Wizard)', file:'wizard.png',      emoji:'🔮', color:'#7f9df0',
    icon:'<path d="M5 18h14"/><path d="M12 3l5 12H7z"/><path d="M12 3v4"/>'},
-  {name:'เซจ (Sage)',            emoji:'📖', color:'#9db8f5',
+  {name:'เซจ (Sage)', file:'sage.png',            emoji:'📖', color:'#9db8f5',
    icon:'<path d="M4 5h5a3 3 0 013 3v11a3 3 0 00-3-3H4z"/><path d="M20 5h-5a3 3 0 00-3 3v11a3 3 0 013-3h5z"/>'},
-  {name:'ฮันเตอร์ (Hunter)',     emoji:'🏹', color:'#8fce6f',
+  {name:'ฮันเตอร์ (Hunter)', file:'hunter.png',     emoji:'🏹', color:'#8fce6f',
    icon:'<path d="M7 3c8 5 8 13 0 18"/><path d="M7 3v18"/><path d="M9.5 12H20"/><path d="M17 9l3 3-3 3"/>'},
-  {name:'บาร์ด (Bard)',          emoji:'🎸', color:'#aad98a',
+  {name:'บาร์ด (Bard)', file:'bard.png',          emoji:'🎸', color:'#aad98a',
    icon:'<path d="M9 18V6l9-2.5V16"/><circle cx="7" cy="18" r="2"/><circle cx="16" cy="16" r="2"/>'},
-  {name:'แดนเซอร์ (Dancer)',     emoji:'💃', color:'#c8e39a',
+  {name:'แดนเซอร์ (Dancer)', file:'dancer.png',     emoji:'💃', color:'#c8e39a',
    icon:'<path d="M4 18c5 4 11-1 8.5-5S6 10 9 7.5 17 5 20 9"/><circle cx="20" cy="6.5" r="1.4" fill="#191430" stroke="none"/>'},
-  {name:'พรีสต์ (Priest)',       emoji:'✨', color:'#f0e08a',
+  {name:'พรีสต์ (Priest)', file:'priest.png',       emoji:'✨', color:'#f0e08a',
    icon:'<path d="M12 4v16"/><path d="M7 9h10"/>'},
-  {name:'มังค์ (Monk)',          emoji:'👊', color:'#f5d9a8',
+  {name:'มังค์ (Monk)', file:'monk.png',          emoji:'👊', color:'#f5d9a8',
    icon:'<circle cx="12" cy="12" r="3.2"/><path d="M12 3.5v2.5M12 18v2.5M3.5 12H6M18 12h2.5M6 6l1.8 1.8M16.2 16.2 18 18M18 6l-1.8 1.8M7.8 16.2 6 18"/>'},
-  {name:'แบล็คสมิธ (Blacksmith)',emoji:'🔨', color:'#e6a35c',
+  {name:'แบล็คสมิธ (Blacksmith)', file:'blacksmith.png',emoji:'🔨', color:'#e6a35c',
    icon:'<path d="M13.5 4.5l6 6-3.5 3.5-6-6z"/><path d="M11.5 9.5 4 19.5"/>'},
-  {name:'อัลเคมิสต์ (Alchemist)',emoji:'🧪', color:'#f0c07a',
+  {name:'อัลเคมิสต์ (Alchemist)', file:'alchemist.png',emoji:'🧪', color:'#f0c07a',
    icon:'<path d="M10 3h4"/><path d="M11 3v6l-5.5 9.2A1.6 1.6 0 006.9 21h10.2a1.6 1.6 0 001.4-2.8L13 9V3"/><path d="M8 15h8"/>'},
-  {name:'แอสแซสซิน (Assassin)',  emoji:'🗡️', color:'#c07fe0',
+  {name:'แอสแซสซิน (Assassin)', file:'assassin.png',  emoji:'🗡️', color:'#c07fe0',
    icon:'<path d="M5 5l14 14"/><path d="M19 5 5 19"/><path d="M9.8 7 7 9.8M17 14.2 14.2 17"/>'},
-  {name:'มือปืน (Gunslinger)',   emoji:'🔫', color:'#6fc8ce',
+  {name:'มือปืน (Gunslinger)', file:'gunslinger.png',   emoji:'🔫', color:'#6fc8ce',
    icon:'<path d="M3 8.5h14.5v3H11l-1.6 5.5H5.8l1.6-5.5H3z"/><path d="M14.5 11.5v2"/>'},
-  {name:'หมาป่าเดียวดาย (Lone Wolf)', emoji:'🐺', color:'#aab4c8',
+  {name:'หมาป่าเดียวดาย (Lone Wolf)', file:'lonewolf.png', emoji:'🐺', color:'#aab4c8',
    icon:'<circle cx="12" cy="15.2" r="3.4"/><circle cx="6.3" cy="9.2" r="1.7"/><circle cx="12" cy="7.3" r="1.7"/><circle cx="17.7" cy="9.2" r="1.7"/>'},
-  {name:'โร้ก (Rogue)',          emoji:'🎭', color:'#d69ff0',
+  {name:'โร้ก (Rogue)', file:'rogue.png',          emoji:'🎭', color:'#d69ff0',
    icon:'<path d="M3 10.5c3-2.5 15-2.5 18 0v2.5c0 3-2.8 4.8-5 3.6L12 15l-4 1.6c-2.2 1.2-5-.6-5-3.6z"/><circle cx="8.3" cy="12.6" r=".9" fill="#191430" stroke="none"/><circle cx="15.7" cy="12.6" r=".9" fill="#191430" stroke="none"/>'},
-  {name:'อื่น ๆ',                emoji:'❔', color:'#9d94b8',
+  {name:'อื่น ๆ', file:'other.png',                emoji:'❔', color:'#9fb3d9',
    icon:'<path d="M8.8 9a3.2 3.2 0 115.4 2.3c-1 1-2.2 1.6-2.2 3.2"/><circle cx="12" cy="18.2" r="1.1" fill="#191430" stroke="none"/>'},
 ];
 function iconHTML(ji){
-  return `<span class="jicon" style="background:${ji.color}">`+
-    `<svg viewBox="0 0 24 24" fill="none" stroke="#191430" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">${ji.icon}</svg></span>`;
+  // ถ้ามีรูปจริงในโฟลเดอร์ icons/ จะใช้รูปนั้น ถ้าไม่มีจะแสดงไอคอนวาดแทนอัตโนมัติ
+  return `<span class="jwrap">`+
+    `<img class="jimg" src="icons/${ji.file}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">`+
+    `<span class="jicon" style="background:${ji.color}; display:none">`+
+    `<svg viewBox="0 0 24 24" fill="none" stroke="#191430" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">${ji.icon}</svg></span></span>`;
 }
 const PARTY_SIZE = 5;
 
@@ -514,6 +534,51 @@ function undoLast(){
   render();
   undoing = false;
   toast('↩️ ย้อนกลับ 1 ขั้นแล้ว');
+}
+
+// ---------- รีเซ็ตเช็คชื่อ / ส่ง Discord Webhook ----------
+function resetAtt(){
+  if(typeof isAdmin !== 'undefined' && !isAdmin){ toast('👑 เฉพาะหัวกิลเท่านั้น'); return; }
+  if(!state.members.some(m => m.att)){ toast('ยังไม่มีใครเช็คชื่อเลย'); return; }
+  if(!window.confirm('เริ่มเช็คชื่อรอบใหม่? (ล้าง ✅/❌ ของทุกคน กลับเป็น ❓)')) return;
+  state.members.forEach(m => m.att = '');
+  render();
+  toast('🔄 เริ่มเช็คชื่อรอบใหม่แล้ว — บอกลูกกิลมากดกันได้เลย');
+}
+let webhookUrl = '';
+function sendWebhook(){
+  if(typeof isAdmin !== 'undefined' && !isAdmin){ toast('👑 เฉพาะหัวกิลเท่านั้น'); return; }
+  if(!state.parties.length){ toast('⚠️ ยังไม่มีตี้เลยนะ'); return; }
+  if(!webhookUrl){
+    const u = window.prompt('วาง Discord Webhook URL ตรงนี้\n(วิธีสร้าง: เข้า Discord → ตั้งค่าห้องแชทของกิล ⚙️ → Integrations → Webhooks → New Webhook → Copy Webhook URL)');
+    if(!u) return;
+    const t = u.trim();
+    if(!t.startsWith('https://discord.com/api/webhooks/') && !t.startsWith('https://discordapp.com/api/webhooks/')){
+      toast('❌ อันนี้ไม่ใช่ Webhook URL ของ Discord นะ'); return;
+    }
+    webhookUrl = t;
+    if(typeof scheduleSave === 'function') scheduleSave();
+  }
+  const text = buildDiscordText();
+  const chunks = [];
+  let cur = '';
+  for(const line of text.split('\n')){
+    if((cur + '\n' + line).length > 1900){ chunks.push(cur); cur = line; }
+    else cur = cur ? cur + '\n' + line : line;
+  }
+  if(cur) chunks.push(cur);
+  (async () => {
+    try{
+      for(const c of chunks){
+        const r = await fetch(webhookUrl, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({content:c})});
+        if(!r.ok && r.status !== 204) throw new Error(r.status);
+      }
+      toast('🚀 ส่งรายชื่อตี้เข้า Discord แล้ว!');
+    }catch(e){
+      webhookUrl = '';
+      toast('❌ ส่งไม่สำเร็จ — กดใหม่แล้ววาง Webhook URL อีกครั้ง');
+    }
+  })();
 }
 
 // ---------- render ----------
@@ -718,6 +783,22 @@ const firebaseConfig = {
 
 let roomRef = null, applyingRemote = false, saveTm = null, lastSentJSON = '';
 let isAdmin = true, adminKey = null;
+let announceText = '';
+function setAnnounce(){
+  if(!isAdmin){ toast(ADMIN_MSG); return; }
+  const t = window.prompt('📣 ข้อความประกาศถึงลูกกิลทุกคน (เว้นว่างแล้วกด OK เพื่อลบประกาศ)', announceText);
+  if(t === null) return;
+  announceText = t.trim();
+  showAnnounce();
+  scheduleSave();
+  toast(announceText ? '📣 ประกาศแล้ว — ทุกคนเห็นทันที' : 'ลบประกาศแล้ว');
+}
+function showAnnounce(){
+  const el = document.getElementById('announceBar');
+  if(!el) return;
+  el.style.display = announceText ? 'block' : 'none';
+  if(announceText) el.innerHTML = '📣 ' + esc(announceText);
+}
 const ADMIN_MSG = '👑 เฉพาะหัวกิลเท่านั้นที่จัดตี้ได้นะ';
 
 function setStatus(mode){
@@ -765,6 +846,8 @@ function scheduleSave(){
       updatedAt: firebase.database.ServerValue.TIMESTAMP,
     };
     if(adminKey) payload.adminKey = adminKey;
+    payload.announce = announceText;
+    if(webhookUrl) payload.webhook = webhookUrl;
     lastSentJSON = JSON.stringify({t:payload.eventTitle, m:payload.eventTime, s:payload.state});
     roomRef.set(payload).catch(() => toast('⚠️ ส่งข้อมูลไม่สำเร็จ เช็คอินเทอร์เน็ต/สิทธิ์ฐานข้อมูล'));
   }, 350);
@@ -837,6 +920,9 @@ function initOnline(){
       scheduleSave();
     }
     setMode();
+    announceText = data.announce || '';
+    showAnnounce();
+    if(data.webhook && !webhookUrl) webhookUrl = data.webhook;
     if(data.updatedAt){
       const el = document.getElementById('lastUpd');
       if(el) el.textContent = '🕐 อัปเดต ' + new Date(data.updatedAt).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'}) + ' น.';
@@ -867,6 +953,7 @@ function initOnline(){
     x: Math.random()*W, y: Math.random()*H,
     r: Math.random()*1.8+.6, s: Math.random()*.45+.12,
     a: Math.random()*.4+.12, w: Math.random()*6.28,
+    c: Math.random() < .5 ? '125,196,255' : '255,143,199',
   });
   (function tick(){
     ctx.clearRect(0,0,W,H);
@@ -874,7 +961,7 @@ function initOnline(){
       p.y -= p.s; p.w += .012; p.x += Math.sin(p.w)*.35;
       if(p.y < -10){ p.y = H+10; p.x = Math.random()*W; }
       ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,6.283);
-      ctx.fillStyle = `rgba(232,182,76,${p.a})`; ctx.fill();
+      ctx.fillStyle = `rgba(${p.c},${(p.a*(0.65+0.35*Math.sin(p.w*2.5))).toFixed(3)})`; ctx.fill();
     }
     requestAnimationFrame(tick);
   })();
