@@ -202,6 +202,10 @@
   body.member .pfoot, body.member #partyMgmtRow, body.member #saveBtn, body.member #openBtn, body.member .slot .del{display:none !important;}
   body.member .slot.empty-click:hover{border-color:#4d4276; cursor:default; box-shadow:inset 0 2px 6px rgba(0,0,0,.4);}
   body.member .chip{cursor:default;}
+  .att{background:none; border:none; cursor:pointer; font-size:13px; padding:2px 3px; border-radius:4px;}
+  .att:hover{background:rgba(255,255,255,.12);}
+  .chip.att-no{opacity:.5; filter:saturate(.4);}
+  .chip.att-no .nm{text-decoration:line-through;}
   .rosterwrap.dragover{outline:2px dashed var(--gold); outline-offset:4px; border-radius:6px; box-shadow:0 0 22px rgba(232,182,76,.3);}
 </style>
 </head>
@@ -234,6 +238,7 @@
   <button class="btn" onclick="copyRoomLink()">🔗 ลิงก์แจกสมาชิก</button>
   <button class="btn adm" onclick="copyAdminLink()">👑 ลิงก์หัวกิล</button>
   <span id="connStatus" style="font-size:12.5px; padding:6px 12px; border:1px solid var(--line); border-radius:4px; color:var(--muted);">⚪ ออฟไลน์</span>
+  <span id="lastUpd" style="font-size:11.5px; color:var(--muted);"></span>
 </div>
 
 <div class="layout">
@@ -254,6 +259,9 @@
         <option value="heal">💚 ฮีล</option>
         <option value="support">✨ ซัพพอร์ต</option>
         <option value="dps">⚔️ ดาเมจ</option>
+        <option value="att:yes">✅ มา</option>
+        <option value="att:no">❌ ไม่มา</option>
+        <option value="att:none">❓ ยังไม่ตอบ</option>
       </select>
     </div>
     <div class="roster" id="rosterList"></div>
@@ -265,6 +273,7 @@
       <button class="btn" onclick="addParty()">➕ เพิ่มตี้ใหม่</button>
       <button class="btn gold" onclick="autoArrange()">🎲 จัดตี้อัตโนมัติ</button>
       <button class="btn" onclick="clearAllParties()">♻️ เคลียร์ทุกตี้</button>
+      <button class="btn" onclick="undoLast()">↩️ ย้อนกลับ</button>
     </div>
   </div>
 </div>
@@ -319,6 +328,7 @@ let state = {
   nextId: 1,
 };
 let selectedMemberId = null;
+let histStack = [], lastRenderJSON = null, undoing = false;
 
 // ---------- helpers ----------
 const jobInfo = j => JOBS.find(x => x.name === j) || JOBS[JOBS.length-1];
@@ -458,8 +468,8 @@ function compHTML(p){
 }
 function autoArrange(){
   if(!isAdmin){ toast(ADMIN_MSG); return; }
-  const un = state.members.filter(m => !partyOf(m.id));
-  if(!un.length){ toast('ทุกคนมีตี้อยู่แล้ว'); return; }
+  const un = state.members.filter(m => !partyOf(m.id) && m.att !== 'no');
+  if(!un.length){ toast('ไม่มีคนว่างที่มาได้เหลือแล้ว'); return; }
   const emptyCount = () => state.parties.reduce((a,p) => a + p.slots.filter(s => s === null).length, 0);
   while(emptyCount() < un.length)
     state.parties.push({id:state.nextId++, name:'ตี้ '+(state.parties.length+1), note:'', slots:Array(PARTY_SIZE).fill(null)});
@@ -488,6 +498,24 @@ function clearAllParties(){
   render();
 }
 
+// ---------- เช็คชื่อ / ย้อนกลับ ----------
+function toggleAtt(id){
+  const m = memberById(id);
+  if(!m) return;
+  m.att = m.att === 'yes' ? 'no' : m.att === 'no' ? '' : 'yes';
+  render();
+}
+function undoLast(){
+  if(typeof isAdmin !== 'undefined' && !isAdmin){ toast('👑 เฉพาะหัวกิลเท่านั้น'); return; }
+  if(!histStack.length){ toast('ไม่มีอะไรให้ย้อนแล้ว'); return; }
+  const d = JSON.parse(histStack.pop());
+  undoing = true;
+  state.members = d.m; state.parties = d.p;
+  render();
+  undoing = false;
+  toast('↩️ ย้อนกลับ 1 ขั้นแล้ว');
+}
+
 // ---------- render ----------
 function chipHTML(m, inSlot){
   const ji = jobInfo(m.job);
@@ -495,18 +523,29 @@ function chipHTML(m, inSlot){
   const sel = selectedMemberId === m.id ? ' selected' : '';
   const asg = (!inSlot && loc) ? ' assigned' : '';
   const tag = (!inSlot && loc) ? `<span class="tag">${esc(loc.party.name)}</span>` : '';
+  const attIcon = m.att === 'yes' ? '✅' : m.att === 'no' ? '❌' : '❓';
+  const attCls = m.att === 'no' ? ' att-no' : '';
+  const attBtn = inSlot ? '' : `<button class="att" title="เช็คชื่อ มา/ไม่มา (กดสลับ)" onclick="event.stopPropagation();toggleAtt(${m.id})">${attIcon}</button>`;
   const delBtn = inSlot
     ? `<button class="del" title="เอาออกจากตี้" onclick="event.stopPropagation();removeFromParty(${m.id});render()">✕</button>`
     : `<button class="del" title="ลบสมาชิก" onclick="event.stopPropagation();deleteMember(${m.id})">🗑</button>`;
-  return `<div class="chip${sel}${asg}" style="--jc:${ji.color};border-left-color:${ji.color}" draggable="${isAdmin}"
+  return `<div class="chip${sel}${asg}${attCls}" style="--jc:${ji.color};border-left-color:${ji.color}" draggable="${isAdmin}"
     ondragstart="onDragStart(event,${m.id})" onclick="onChipClick(${m.id})">
     ${iconHTML(ji)}
     <span class="info"><span class="nm">${esc(m.name)}</span><span class="jb">${esc(m.job)}</span></span>
-    ${tag}${delBtn}</div>`;
+    ${tag}${attBtn}${delBtn}</div>`;
 }
 function esc(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
 function render(){
+  // เก็บประวัติไว้ย้อนกลับ
+  const _nowJ = JSON.stringify({m:state.members, p:state.parties});
+  const _remote = (typeof applyingRemote !== 'undefined' && applyingRemote);
+  if(lastRenderJSON !== null && _nowJ !== lastRenderJSON && !undoing && !_remote){
+    histStack.push(lastRenderJSON);
+    if(histStack.length > 30) histStack.shift();
+  }
+  lastRenderJSON = _nowJ;
   // job dropdown (once)
   const sel = document.getElementById('newJob');
   if(!sel.options.length)
@@ -515,9 +554,13 @@ function render(){
   // roster
   const q = document.getElementById('searchBox').value.trim().toLowerCase();
   const rf = document.getElementById('roleFilter').value;
+  const passRF = m => !rf ? true
+    : rf === 'att:yes' ? m.att === 'yes'
+    : rf === 'att:no' ? m.att === 'no'
+    : rf === 'att:none' ? !m.att
+    : jobRole(m.job) === rf;
   const list = state.members.filter(m =>
-    (!q || m.name.toLowerCase().includes(q) || m.job.toLowerCase().includes(q)) &&
-    (!rf || jobRole(m.job) === rf));
+    (!q || m.name.toLowerCase().includes(q) || m.job.toLowerCase().includes(q)) && passRF(m));
   document.getElementById('rosterList').innerHTML =
     list.length ? list.map(m => chipHTML(m,false)).join('')
     : `<div style="color:#5d5480;font-size:13px;text-align:center;padding:14px 0;font-style:italic">${state.members.length? 'ไม่พบที่ค้นหา' : 'ยังไม่มีสมาชิก — เพิ่มชื่อด้านบนได้เลย'}</div>`;
@@ -553,8 +596,10 @@ function render(){
 
   // summary
   const un = state.members.length - assignedCount;
+  const attY = state.members.filter(m => m.att === 'yes').length;
+  const attN = state.members.filter(m => m.att === 'no').length;
   document.getElementById('summaryBar').innerHTML =
-    `สมาชิกทั้งหมด <b>${state.members.length}</b> คน · ลงตี้แล้ว <b>${assignedCount}</b> · ยังไม่มีตี้ <b>${un}</b> · จำนวนตี้ <b>${state.parties.length}</b>`;
+    `สมาชิกทั้งหมด <b>${state.members.length}</b> คน · ลงตี้แล้ว <b>${assignedCount}</b> · ยังไม่มีตี้ <b>${un}</b> · จำนวนตี้ <b>${state.parties.length}</b> · เช็คชื่อ: ✅ <b>${attY}</b> ❌ <b>${attN}</b> ❓ <b>${state.members.length - attY - attN}</b>`;
 
   scheduleSave(); // sync ขึ้นห้องออนไลน์ (ถ้าเชื่อมต่ออยู่)
 }
@@ -586,8 +631,11 @@ function buildDiscordText(){
   if(time) parts.push(`🗓️ นัดหมาย: **${time}**`);
   parts.push('');
   state.parties.forEach((p,i) => { parts.push(partyText(p,i)); parts.push(''); });
-  const un = state.members.filter(m => !partyOf(m.id));
+  const un = state.members.filter(m => !partyOf(m.id) && m.att !== 'no');
   if(un.length) parts.push(`👥 ยังไม่มีตี้: ${un.map(m=>m.name).join(', ')}`);
+  const attY = state.members.filter(m => m.att === 'yes').length;
+  const attN = state.members.filter(m => m.att === 'no').length;
+  if(attY || attN) parts.push(`📋 เช็คชื่อ: ✅ มา ${attY} · ❌ ไม่มา ${attN} · ❓ ยังไม่ตอบ ${state.members.length - attY - attN}`);
   return parts.join('\n').trim();
 }
 function copyText(txt, msg){
@@ -688,7 +736,7 @@ function randRoomId(){
 // Firebase ตัดค่า null/array ว่างทิ้ง — แปลงไป-กลับให้โครงสร้างครบเสมอ
 function serializeState(){
   return {
-    members: state.members.map(m => ({id:m.id, name:m.name, job:m.job})),
+    members: state.members.map(m => ({id:m.id, name:m.name, job:m.job, att:m.att || ''})),
     parties: state.parties.map(p => ({id:p.id, name:p.name, note:p.note||'', slots:p.slots.map(s => s === null ? -1 : s)})),
     nextId: state.nextId,
   };
@@ -789,6 +837,10 @@ function initOnline(){
       scheduleSave();
     }
     setMode();
+    if(data.updatedAt){
+      const el = document.getElementById('lastUpd');
+      if(el) el.textContent = '🕐 อัปเดต ' + new Date(data.updatedAt).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'}) + ' น.';
+    }
     if(wasAdmin !== isAdmin){ applyingRemote = true; render(); applyingRemote = false; }
     const incoming = JSON.stringify({t:data.eventTitle||'', m:data.eventTime||'', s:data.state});
     if(incoming === lastSentJSON) return; // echo ของเราเอง
