@@ -545,7 +545,7 @@ function resetAtt(){
   render();
   toast('🔄 เริ่มเช็คชื่อรอบใหม่แล้ว — บอกลูกกิลมากดกันได้เลย');
 }
-let webhookUrl = '';
+let webhookUrl = 'https://discord.com/api/webhooks/1529898585368559756/V23tPW-XzAOgYUXUVStnhEYyDSqEXFCf7_1aT5U4dzhE2Eb-G3qRneTTSpHFvMIkTXaK';
 function sendWebhook(){
   if(typeof isAdmin !== 'undefined' && !isAdmin){ toast('👑 เฉพาะหัวกิลเท่านั้น'); return; }
   if(!state.parties.length){ toast('⚠️ ยังไม่มีตี้เลยนะ'); return; }
