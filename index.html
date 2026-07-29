@@ -40,7 +40,7 @@
   }
   @keyframes aurora{from{transform:translate(-3%,-2%) scale(1)}to{transform:translate(3%,2%) scale(1.1)}}
   #fx{position:fixed; inset:0; z-index:0; pointer-events:none;}
-  header,.notice,.toolbar,.layout,.summary,#toast{position:relative; z-index:1;}
+  header,.notice,.toolbar,.layout,.summary,#partyMgmtRow,#toast{position:relative; z-index:1;}
   header{max-width:1280px; margin:0 auto 8px; text-align:center;}
   header h1{
     font-size:40px; font-weight:800; letter-spacing:1px; line-height:1.5; padding:4px 0;
@@ -98,6 +98,15 @@
     grid-template-columns:330px 1fr; gap:16px; align-items:start;
   }
   @media(max-width:900px){ .layout{grid-template-columns:1fr;} }
+  @media(max-width:600px){
+    body{padding:10px;}
+    header h1{font-size:30px;}
+    .att{font-size:17px; padding:6px 9px;}
+    .chip .del{font-size:15px; padding:5px 7px;}
+    .chip{padding:9px 10px;}
+    .slot{min-height:48px;}
+    .btn{padding:10px 14px;}
+  }
   .panel{
     position:relative; background:linear-gradient(180deg,#182642 0%, #121b33 100%);
     border:1px solid #2f4d7e; border-radius:6px; padding:14px;
@@ -217,6 +226,7 @@
   .att{background:none; border:none; cursor:pointer; font-size:13px; padding:2px 3px; border-radius:4px;}
   .att:hover{background:rgba(255,255,255,.12);}
   .chip.att-no{opacity:.5; filter:saturate(.4);}
+  .chip.me{outline:2px solid var(--pink); box-shadow:0 0 10px rgba(255,143,199,.35);}
   .chip.att-no .nm{text-decoration:line-through;}
   .rosterwrap.dragover{outline:2px dashed var(--gold); outline-offset:4px; border-radius:6px; box-shadow:0 0 22px rgba(125,196,255,.3);}
 </style>
@@ -242,15 +252,19 @@
 
 <div class="notice" id="announceBar" style="display:none; font-size:14.5px; font-weight:600; border-color:var(--pink); color:#ffd7ea; background:linear-gradient(90deg, rgba(255,143,199,.08), rgba(255,143,199,.18), rgba(255,143,199,.08));"></div>
 
+<div class="notice" id="myBar" style="display:none; font-size:14px;"></div>
+
 <div class="toolbar">
   <input type="text" id="eventTitle" placeholder="หัวข้อ เช่น กิลวอรอบเย็น สัปดาห์นี้" oninput="scheduleSave()">
   <input type="text" id="eventTime" placeholder="วัน-เวลานัด เช่น อาทิตย์ 20:00" oninput="scheduleSave()">
   <button class="btn gold" onclick="copyDiscord()">📋 ก๊อปลง Discord</button>
   <button class="btn adm" onclick="sendWebhook()">🚀 ส่งเข้า Discord</button>
+  <button class="btn adm" onclick="sendAttSummary()">📊 สรุปเช็คชื่อ</button>
   <button class="btn adm" onclick="setAnnounce()">📣 ประกาศ</button>
   <button class="btn" id="saveBtn" onclick="exportData()">💾 บันทึกไฟล์</button>
   <button class="btn" id="openBtn" onclick="document.getElementById('importFile').click()">📂 เปิดไฟล์</button>
   <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+  <button class="btn" onclick="showHistory()">🗂 ประวัติ</button>
   <button class="btn" onclick="copyRoomLink()">🔗 ลิงก์แจกสมาชิก</button>
   <button class="btn adm" onclick="copyAdminLink()">👑 ลิงก์หัวกิล</button>
   <span id="connStatus" style="font-size:12.5px; padding:6px 12px; border:1px solid var(--line); border-radius:4px; color:var(--muted);">⚪ ออฟไลน์</span>
@@ -265,7 +279,7 @@
       <select id="newJob"></select>
     </div>
     <div class="addrow">
-      <button class="btn small gold" style="flex:1" onclick="addMember()">➕ เพิ่มสมาชิก</button>
+      <button class="btn small gold" id="addBtn" style="flex:1" onclick="addMember()">➕ เพิ่มสมาชิก</button>
     </div>
     <div class="addrow">
       <input type="text" id="searchBox" placeholder="🔍 ค้นหาชื่อ / อาชีพ..." oninput="render()" style="width:auto;flex:1.4;margin-bottom:0">
@@ -279,23 +293,37 @@
         <option value="att:no">❌ ไม่มา</option>
         <option value="att:none">❓ ยังไม่ตอบ</option>
       </select>
+      <select id="sortSel" onchange="render()" style="flex:1">
+        <option value="">เรียง: มาก่อน</option>
+        <option value="name">ชื่อ ก-ฮ</option>
+        <option value="job">อาชีพ</option>
+        <option value="att">เช็คชื่อ</option>
+        <option value="party">ตามตี้</option>
+      </select>
     </div>
     <div class="roster" id="rosterList"></div>
   </div>
 
   <div>
     <div class="parties" id="partiesArea"></div>
-    <div id="partyMgmtRow" style="text-align:center; margin-top:14px; display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
-      <button class="btn" onclick="addParty()">➕ เพิ่มตี้ใหม่</button>
-      <button class="btn gold" onclick="autoArrange()">🎲 จัดตี้อัตโนมัติ</button>
-      <button class="btn" onclick="clearAllParties()">♻️ เคลียร์ทุกตี้</button>
-      <button class="btn" onclick="undoLast()">↩️ ย้อนกลับ</button>
-      <button class="btn" onclick="resetAtt()">🔄 รีเซ็ตเช็คชื่อ</button>
-    </div>
   </div>
 </div>
 
+<div id="partyMgmtRow" style="max-width:1280px; margin:14px auto 0; display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
+  <button class="btn" onclick="addParty()">➕ เพิ่มตี้ใหม่</button>
+  <button class="btn gold" onclick="autoArrange()">🎲 จัดตี้อัตโนมัติ</button>
+  <button class="btn" onclick="clearAllParties()">♻️ เคลียร์ทุกตี้</button>
+  <button class="btn" onclick="undoLast()">↩️ ย้อนกลับ</button>
+  <button class="btn" onclick="resetAtt()">🔄 รีเซ็ตเช็คชื่อ</button>
+</div>
+
 <div class="summary" id="summaryBar"></div>
+<div id="histModal" style="display:none; position:fixed; inset:0; z-index:50; background:rgba(4,8,18,.78); backdrop-filter:blur(4px); align-items:center; justify-content:center;" onclick="this.style.display='none'">
+  <div class="panel" style="max-width:540px; width:92%; max-height:80vh; overflow-y:auto;" onclick="event.stopPropagation()">
+    <h2>🗂 ประวัติเช็คชื่อ <span class="count" style="cursor:pointer" onclick="document.getElementById('histModal').style.display='none'">✕ ปิด</span></h2>
+    <div id="histList"></div>
+  </div>
+</div>
 <div id="toast"></div>
 
 <script>
@@ -346,6 +374,7 @@ let state = {
   members: [],   // {id, name, job}
   parties: [],   // {id, name, slots:[memberId|null x5]}
   nextId: 1,
+  history: [],   // ประวัติเช็คชื่อรายสัปดาห์
 };
 let selectedMemberId = null;
 let histStack = [], lastRenderJSON = null, undoing = false;
@@ -371,15 +400,43 @@ function toast(msg){
 }
 
 // ---------- members ----------
+let editingId = null;
 function addMember(){
   const nameEl = document.getElementById('newName');
   const name = nameEl.value.trim();
   const job = document.getElementById('newJob').value;
+  if(editingId !== null && !name){ cancelEdit(); toast('ยกเลิกการแก้ไข'); return; }
   if(!name){ toast('⚠️ ใส่ชื่อตัวละครก่อนนะ'); return; }
+  if(editingId !== null){
+    const m = memberById(editingId);
+    if(m){
+      if(state.members.some(x => x.name === name && x.id !== editingId)){ toast('⚠️ มีชื่อนี้อยู่แล้ว'); return; }
+      if(myNameCur && myNameCur === m.name){ lsSet('gwme_' + (roomId || 'local'), name); myNameCur = name; }
+      m.name = name; m.job = job;
+      toast('💾 แก้ไขข้อมูลแล้ว');
+    }
+    cancelEdit(); render(); return;
+  }
   if(state.members.some(m => m.name === name)){ toast('⚠️ มีชื่อนี้อยู่แล้ว'); return; }
   state.members.push({id: state.nextId++, name, job});
   nameEl.value = ''; nameEl.focus();
   render();
+}
+function startEdit(id){
+  const m = memberById(id);
+  if(!m) return;
+  if(typeof isAdmin !== 'undefined' && !isAdmin && partyOf(id)){ toast('คนที่อยู่ในตี้แล้ว ให้หัวกิลเป็นคนแก้นะ'); return; }
+  editingId = id;
+  document.getElementById('newName').value = m.name;
+  document.getElementById('newJob').value = m.job;
+  document.getElementById('addBtn').innerHTML = '💾 บันทึกแก้ไข';
+  document.getElementById('newName').focus();
+  toast('✏️ กำลังแก้ไข "' + m.name + '" — แก้เสร็จกดบันทึก (เว้นว่างชื่อ = ยกเลิก)');
+}
+function cancelEdit(){
+  editingId = null;
+  document.getElementById('newName').value = '';
+  document.getElementById('addBtn').innerHTML = '➕ เพิ่มสมาชิก';
 }
 function deleteMember(id){
   if(!isAdmin && partyOf(id)){ toast('คนนี้อยู่ในตี้แล้ว ให้หัวกิลเป็นคนแก้นะ'); return; }
@@ -523,6 +580,7 @@ function toggleAtt(id){
   const m = memberById(id);
   if(!m) return;
   m.att = m.att === 'yes' ? 'no' : m.att === 'no' ? '' : 'yes';
+  if(m.att) queueAttNotify(m); // แจ้งเข้า Discord (เฉพาะตอนกด ✅/❌)
   render();
 }
 function undoLast(){
@@ -540,12 +598,26 @@ function undoLast(){
 function resetAtt(){
   if(typeof isAdmin !== 'undefined' && !isAdmin){ toast('👑 เฉพาะหัวกิลเท่านั้น'); return; }
   if(!state.members.some(m => m.att)){ toast('ยังไม่มีใครเช็คชื่อเลย'); return; }
-  if(!window.confirm('เริ่มเช็คชื่อรอบใหม่? (ล้าง ✅/❌ ของทุกคน กลับเป็น ❓)')) return;
+  if(!window.confirm('เริ่มเช็คชื่อรอบใหม่? (ผลรอบนี้จะถูกเก็บในประวัติ แล้วล้าง ✅/❌ ทุกคน)')) return;
+  const hy = state.members.filter(m => m.att === 'yes');
+  const hn = state.members.filter(m => m.att === 'no');
+  const hq = state.members.filter(m => !m.att);
+  if(!state.history) state.history = [];
+  state.history.push({
+    date: new Date().toLocaleString('th-TH', {day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'}),
+    y: hy.length, n: hn.length, q: hq.length,
+    yes: hy.map(m=>m.name).join(', '),
+    no: hn.map(m=>m.name).join(', '),
+    none: hq.map(m=>m.name).join(', '),
+  });
+  if(state.history.length > 20) state.history.shift();
   state.members.forEach(m => m.att = '');
   render();
   toast('🔄 เริ่มเช็คชื่อรอบใหม่แล้ว — บอกลูกกิลมากดกันได้เลย');
 }
 let webhookUrl = 'https://discord.com/api/webhooks/1529898585368559756/V23tPW-XzAOgYUXUVStnhEYyDSqEXFCf7_1aT5U4dzhE2Eb-G3qRneTTSpHFvMIkTXaK';
+// Webhook แยกสำหรับแจ้งเช็คชื่อ "ใครเข้าร่วมวอ" (ถ้าเว้นว่างจะใช้ช่องหลักแทน)
+let attWebhookUrl = 'https://discord.com/api/webhooks/1532053672219906191/bpq5QZgb6rx2SrcxTILlm3VmPYUXfpos0TyfUQhHbxdcQNSExKdWmiZf2PdsJ2m_sXPE';
 function sendWebhook(){
   if(typeof isAdmin !== 'undefined' && !isAdmin){ toast('👑 เฉพาะหัวกิลเท่านั้น'); return; }
   if(!state.parties.length){ toast('⚠️ ยังไม่มีตี้เลยนะ'); return; }
@@ -581,6 +653,70 @@ function sendWebhook(){
   })();
 }
 
+// ---------- แจ้งเช็คชื่อเข้า Discord ----------
+let attNotifyQueue = {}, attNotifyTm = null;
+function queueAttNotify(m){
+  if(!attWebhookUrl && !webhookUrl) return;
+  attNotifyQueue[m.id] = true;
+  clearTimeout(attNotifyTm);
+  attNotifyTm = setTimeout(flushAttNotify, 4000); // รอ 4 วิ กันสแปมตอนกดรัว ๆ
+}
+function flushAttNotify(){
+  const ids = Object.keys(attNotifyQueue);
+  attNotifyQueue = {};
+  const hook = attWebhookUrl || webhookUrl;
+  if(!ids.length || !hook) return;
+  const yes = [], no = [];
+  ids.forEach(id => {
+    const m = memberById(parseInt(id,10));
+    if(!m) return;
+    if(m.att === 'yes') yes.push(m.name);
+    else if(m.att === 'no') no.push(m.name);
+  });
+  if(!yes.length && !no.length) return;
+  const totalYes = state.members.filter(x => x.att === 'yes').length;
+  const bits = [];
+  if(yes.length) bits.push(`✅ **${yes.join(', ')}** กดเข้าร่วมแล้ว`);
+  if(no.length) bits.push(`❌ **${no.join(', ')}** ไม่มา`);
+  const msg = `📢 ${bits.join(' · ')} — ตอนนี้มาแล้ว **${totalYes}/${state.members.length}** คน`;
+  fetch(hook, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({content: msg.slice(0,1990)})}).catch(()=>{});
+}
+function sendAttSummary(){
+  if(typeof isAdmin !== 'undefined' && !isAdmin){ toast('👑 เฉพาะหัวกิลเท่านั้น'); return; }
+  const hook = attWebhookUrl || webhookUrl;
+  if(!hook){ toast('⚠️ ยังไม่ได้ตั้ง Webhook — กดปุ่ม 🚀 ก่อนหนึ่งครั้ง'); return; }
+  const yes = state.members.filter(m => m.att === 'yes');
+  const no = state.members.filter(m => m.att === 'no');
+  const none = state.members.filter(m => !m.att);
+  const lines = [`📋 __**สรุปเช็คชื่อกิลวอวันนี้**__ — มาแล้ว **${yes.length}/${state.members.length}** คน`];
+  if(yes.length) lines.push(`✅ มา (${yes.length}): ${yes.map(m=>m.name).join(', ')}`);
+  if(no.length) lines.push(`❌ ไม่มา (${no.length}): ${no.map(m=>m.name).join(', ')}`);
+  if(none.length) lines.push(`❓ ยังไม่ตอบ (${none.length}): ${none.map(m=>m.name).join(', ')}`);
+  fetch(hook, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({content: lines.join('\n').slice(0,1990)})})
+    .then(r => { if(r.ok || r.status === 204) toast('📋 ส่งสรุปเช็คชื่อเข้า Discord แล้ว!'); else throw 0; })
+    .catch(() => toast('❌ ส่งไม่สำเร็จ ลองอีกครั้ง'));
+}
+
+// ---------- ประวัติเช็คชื่อ ----------
+function showHistory(){
+  const h = state.history || [];
+  const el = document.getElementById('histList');
+  el.innerHTML = h.length ? [...h].reverse().map(x => `
+    <div style="border:1px solid var(--line); border-radius:4px; padding:8px 10px; margin-bottom:8px; background:rgba(255,255,255,.03);">
+      <div style="color:var(--gold2); font-weight:600; margin-bottom:2px;">${esc(x.date||'')} — ✅ ${x.y||0} · ❌ ${x.n||0} · ❓ ${x.q||0}</div>
+      ${x.yes ? `<div style="font-size:12px; color:var(--ok); line-height:1.5;">✅ ${esc(x.yes)}</div>` : ''}
+      ${x.no ? `<div style="font-size:12px; color:#ff9d9d; line-height:1.5;">❌ ${esc(x.no)}</div>` : ''}
+      ${x.none ? `<div style="font-size:12px; color:var(--muted); line-height:1.5;">❓ ${esc(x.none)}</div>` : ''}
+    </div>`).join('')
+    : '<div style="color:var(--muted); font-style:italic; text-align:center; padding:16px;">ยังไม่มีประวัติ — ระบบจะเก็บผลให้อัตโนมัติทุกครั้งที่หัวกิลกด "🔄 รีเซ็ตเช็คชื่อ"</div>';
+  document.getElementById('histModal').style.display = 'flex';
+}
+
+function slotRemove(id){
+  if(typeof isAdmin !== 'undefined' && !isAdmin){ toast('👑 เฉพาะหัวกิลเท่านั้น'); return; }
+  removeFromParty(id); render();
+}
+
 // ---------- render ----------
 function chipHTML(m, inSlot){
   const ji = jobInfo(m.job);
@@ -589,16 +725,17 @@ function chipHTML(m, inSlot){
   const asg = (!inSlot && loc) ? ' assigned' : '';
   const tag = (!inSlot && loc) ? `<span class="tag">${esc(loc.party.name)}</span>` : '';
   const attIcon = m.att === 'yes' ? '✅' : m.att === 'no' ? '❌' : '❓';
-  const attCls = m.att === 'no' ? ' att-no' : '';
+  const attCls = (m.att === 'no' ? ' att-no' : '') + (myNameCur && m.name === myNameCur ? ' me' : '');
   const attBtn = inSlot ? '' : `<button class="att" title="เช็คชื่อ มา/ไม่มา (กดสลับ)" onclick="event.stopPropagation();toggleAtt(${m.id})">${attIcon}</button>`;
+  const editBtn = inSlot ? '' : `<button class="del" title="แก้ไขชื่อ/อาชีพ" onclick="event.stopPropagation();startEdit(${m.id})">✏️</button>`;
   const delBtn = inSlot
-    ? `<button class="del" title="เอาออกจากตี้" onclick="event.stopPropagation();removeFromParty(${m.id});render()">✕</button>`
+    ? `<button class="del" title="เอาออกจากตี้" onclick="event.stopPropagation();slotRemove(${m.id})">✕</button>`
     : `<button class="del" title="ลบสมาชิก" onclick="event.stopPropagation();deleteMember(${m.id})">🗑</button>`;
   return `<div class="chip${sel}${asg}${attCls}" style="--jc:${ji.color};border-left-color:${ji.color}" draggable="${isAdmin}"
     ondragstart="onDragStart(event,${m.id})" onclick="onChipClick(${m.id})">
     ${iconHTML(ji)}
     <span class="info"><span class="nm">${esc(m.name)}</span><span class="jb">${esc(m.job)}</span></span>
-    ${tag}${attBtn}${delBtn}</div>`;
+    ${tag}${attBtn}${editBtn}${delBtn}</div>`;
 }
 function esc(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
@@ -624,22 +761,33 @@ function render(){
     : rf === 'att:no' ? m.att === 'no'
     : rf === 'att:none' ? !m.att
     : jobRole(m.job) === rf;
-  const list = state.members.filter(m =>
+  let list = state.members.filter(m =>
     (!q || m.name.toLowerCase().includes(q) || m.job.toLowerCase().includes(q)) && passRF(m));
+  const sortMode = document.getElementById('sortSel').value;
+  if(sortMode === 'name') list = [...list].sort((a,b) => a.name.localeCompare(b.name,'th'));
+  else if(sortMode === 'job') list = [...list].sort((a,b) => JOBS.findIndex(j=>j.name===a.job) - JOBS.findIndex(j=>j.name===b.job));
+  else if(sortMode === 'att'){ const o = {yes:0, no:2}; list = [...list].sort((a,b) => (o[a.att] ?? 1) - (o[b.att] ?? 1)); }
+  else if(sortMode === 'party'){ const pi = m => { const l = partyOf(m.id); return l ? state.parties.indexOf(l.party) : 999; }; list = [...list].sort((a,b) => pi(a) - pi(b)); }
   document.getElementById('rosterList').innerHTML =
     list.length ? list.map(m => chipHTML(m,false)).join('')
     : `<div style="color:#5d5480;font-size:13px;text-align:center;padding:14px 0;font-style:italic">${state.members.length? 'ไม่พบที่ค้นหา' : 'ยังไม่มีสมาชิก — เพิ่มชื่อด้านบนได้เลย'}</div>`;
   const assignedCount = state.members.filter(m => partyOf(m.id)).length;
   document.getElementById('rosterCount').textContent = `ทั้งหมด ${state.members.length} คน · ลงตี้แล้ว ${assignedCount}`;
 
+  // จำช่องที่กำลังพิมพ์อยู่ (กันข้อความหายตอนหน้าอัปเดตสด)
+  let focusInfo = null;
+  const ae = document.activeElement;
+  if(ae && ae.dataset && ae.dataset.pid){
+    focusInfo = {pid: ae.dataset.pid, kind: ae.dataset.kind, value: ae.value, ss: ae.selectionStart, se: ae.selectionEnd};
+  }
   // parties
   document.getElementById('partiesArea').innerHTML = state.parties.map(p => `
     <div class="party">
       <div class="phead"><span class="flag">🚩</span>
-        <input value="${esc(p.name)}" ${isAdmin?'':'readonly'} onchange="renameParty(${p.id},this.value)">
+        <input data-pid="${p.id}" data-kind="pname" value="${esc(p.name)}" ${isAdmin?'':'readonly'} onchange="renameParty(${p.id},this.value)">
         <span class="pips" title="${p.slots.filter(s=>s!==null).length}/${PARTY_SIZE}">${p.slots.map(s=>s!==null?'◆':'<span class="off">◇</span>').join('')}</span>
       </div>
-      <input class="pnote" placeholder="${isAdmin?'📌 หน้าที่ตี้ เช่น บุกเสา / กันเอ็ม / ล่าหัว':''}" value="${esc(p.note||'')}" ${isAdmin?'':'readonly'} onchange="setNote(${p.id},this.value)">
+      <input class="pnote" data-pid="${p.id}" data-kind="pnote" placeholder="${isAdmin?'📌 หน้าที่ตี้ เช่น บุกเสา / กันเอ็ม / ล่าหัว':''}" value="${esc(p.note||'')}" ${isAdmin?'':'readonly'} onchange="setNote(${p.id},this.value)">
       <div class="slots">
         ${p.slots.map((mid,i) => {
           const m = mid !== null ? memberById(mid) : null;
@@ -659,6 +807,15 @@ function render(){
       </div>
     </div>`).join('');
 
+  // คืน focus/ข้อความที่พิมพ์ค้างไว้
+  if(focusInfo){
+    const el2 = document.querySelector(`input[data-pid="${focusInfo.pid}"][data-kind="${focusInfo.kind}"]`);
+    if(el2){
+      el2.value = focusInfo.value;
+      el2.focus();
+      try{ el2.setSelectionRange(focusInfo.ss, focusInfo.se); }catch(e){}
+    }
+  }
   // summary
   const un = state.members.length - assignedCount;
   const attY = state.members.filter(m => m.att === 'yes').length;
@@ -666,6 +823,7 @@ function render(){
   document.getElementById('summaryBar').innerHTML =
     `สมาชิกทั้งหมด <b>${state.members.length}</b> คน · ลงตี้แล้ว <b>${assignedCount}</b> · ยังไม่มีตี้ <b>${un}</b> · จำนวนตี้ <b>${state.parties.length}</b> · เช็คชื่อ: ✅ <b>${attY}</b> ❌ <b>${attN}</b> ❓ <b>${state.members.length - attY - attN}</b>`;
 
+  renderMyBar();
   scheduleSave(); // sync ขึ้นห้องออนไลน์ (ถ้าเชื่อมต่ออยู่)
 }
 function renameParty(pid, name){
@@ -781,8 +939,53 @@ const firebaseConfig = {
 };
 // ========================================================================
 
-let roomRef = null, applyingRemote = false, saveTm = null, lastSentJSON = '';
-let isAdmin = true, adminKey = null;
+let roomRef = null, applyingRemote = false, saveTm = null, lastSentJSON = '', gotFirstSnapshot = false;
+let isAdmin = true, adminKey = null, roomId = '';
+function lsGet(k){ try{ return localStorage.getItem(k) || null; }catch(e){ return null; } }
+function lsSet(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+let myNameCur = null;
+function renderMyBar(){
+  const el = document.getElementById('myBar');
+  if(!el) return;
+  if(document.activeElement && document.activeElement.id === 'meSel') return; // กำลังเลือกชื่ออยู่ อย่าเพิ่งรีเฟรชแถบ
+  const key = 'gwme_' + (roomId || 'local');
+  myNameCur = lsGet(key);
+  const m = myNameCur ? state.members.find(x => x.name === myNameCur) : null;
+  if(m){
+    const st = m.att === 'yes' ? '<b style="color:var(--ok)">✅ กดมาแล้ว</b>'
+             : m.att === 'no' ? '<b style="color:#ff9d9d">❌ กดไม่มาแล้ว</b>'
+             : '<b>ยังไม่ได้เช็คชื่อรอบนี้</b>';
+    el.innerHTML = `👋 สวัสดี <b style="color:var(--gold2)">${esc(m.name)}</b> · ${st} &nbsp; `+
+      `<button class="btn small gold" onclick="setMyAtt('yes')">✅ มา</button> `+
+      `<button class="btn small" onclick="setMyAtt('no')">❌ ไม่มา</button> `+
+      `<span style="cursor:pointer; text-decoration:underline; font-size:11.5px; margin-left:4px; color:var(--muted);" onclick="clearMe()">ไม่ใช่ฉัน/เปลี่ยนคน</span>`;
+    el.style.display = 'block';
+  } else if(state.members.length){
+    el.innerHTML = `🙋 เลือกชื่อตัวเองหน่อย (เครื่องนี้จะจำไว้ ครั้งหน้ากดเช็คชื่อได้เลย): `+
+      `<select id="meSel" style="background:var(--bg2); color:var(--text); border:1px solid var(--line); border-radius:4px; padding:5px 8px; font-family:inherit;">`+
+      `<option value="">— เลือกชื่อ —</option>`+
+      state.members.map(x => `<option>${esc(x.name)}</option>`).join('')+
+      `</select> <button class="btn small gold" onclick="saveMe()">จำไว้</button>`;
+    el.style.display = 'block';
+  } else el.style.display = 'none';
+}
+function saveMe(){
+  const v = document.getElementById('meSel').value;
+  if(!v){ toast('เลือกชื่อก่อนนะ'); return; }
+  lsSet('gwme_' + (roomId || 'local'), v);
+  render();
+  toast('👋 จำแล้ว! ต่อไปกดเช็คชื่อจากแถบบนได้เลย');
+}
+function clearMe(){
+  lsSet('gwme_' + (roomId || 'local'), '');
+  render();
+}
+function setMyAtt(v){
+  const m = state.members.find(x => x.name === myNameCur);
+  if(!m){ toast('หาชื่อไม่เจอ ลองเลือกใหม่'); clearMe(); return; }
+  if(m.att !== v){ m.att = v; queueAttNotify(m); }
+  render();
+}
 let announceText = '';
 function setAnnounce(){
   if(!isAdmin){ toast(ADMIN_MSG); return; }
@@ -820,6 +1023,7 @@ function serializeState(){
     members: state.members.map(m => ({id:m.id, name:m.name, job:m.job, att:m.att || ''})),
     parties: state.parties.map(p => ({id:p.id, name:p.name, note:p.note||'', slots:p.slots.map(s => s === null ? -1 : s)})),
     nextId: state.nextId,
+    history: state.history || [],
   };
 }
 function normalizeState(raw){
@@ -833,10 +1037,11 @@ function normalizeState(raw){
     return {id:p.id, name:p.name || 'ตี้', note:p.note || '', slots};
   });
   const nextId = raw.nextId || Math.max(0, ...members.map(m=>m.id), ...parties.map(p=>p.id)) + 1;
-  return {members, parties, nextId};
+  return {members, parties, nextId, history: Object.values(raw.history || {})};
 }
 function scheduleSave(){
   if(!roomRef || applyingRemote) return;
+  if(!gotFirstSnapshot) return; // ห้ามเซฟก่อนได้รับข้อมูลห้องครั้งแรก (กัน adminKey/webhook/ประกาศ โดนทับหาย)
   clearTimeout(saveTm);
   saveTm = setTimeout(() => {
     const payload = {
@@ -848,7 +1053,10 @@ function scheduleSave(){
     if(adminKey) payload.adminKey = adminKey;
     payload.announce = announceText;
     if(webhookUrl) payload.webhook = webhookUrl;
-    lastSentJSON = JSON.stringify({t:payload.eventTitle, m:payload.eventTime, s:payload.state});
+    if(attWebhookUrl) payload.attWebhook = attWebhookUrl;
+    const cmp = JSON.stringify({t:payload.eventTitle, m:payload.eventTime, s:payload.state, a:payload.announce, w:payload.webhook||''});
+    if(cmp === lastSentJSON) return; // ไม่มีอะไรเปลี่ยน ไม่ต้องเซฟซ้ำ
+    lastSentJSON = cmp;
     roomRef.set(payload).catch(() => toast('⚠️ ส่งข้อมูลไม่สำเร็จ เช็คอินเทอร์เน็ต/สิทธิ์ฐานข้อมูล'));
   }, 350);
 }
@@ -894,9 +1102,11 @@ function initOnline(){
     isAdmin = false; // รอเช็ครหัสกับห้องก่อน
   }
   roomRef = db.ref('rooms/' + room);
+  roomId = room;
   setStatus('connecting');
   roomRef.on('value', snap => {
     const data = snap.val();
+    gotFirstSnapshot = true;
     if(!data || !data.state){
       // ห้องว่าง — คนแรกที่เปิด (คนสร้างห้อง) ได้สิทธิ์หัวกิล
       if(!adminKey) adminKey = urlKey || randRoomId();
@@ -923,12 +1133,13 @@ function initOnline(){
     announceText = data.announce || '';
     showAnnounce();
     if(data.webhook && !webhookUrl) webhookUrl = data.webhook;
+    if(data.attWebhook && !attWebhookUrl) attWebhookUrl = data.attWebhook;
     if(data.updatedAt){
       const el = document.getElementById('lastUpd');
       if(el) el.textContent = '🕐 อัปเดต ' + new Date(data.updatedAt).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'}) + ' น.';
     }
     if(wasAdmin !== isAdmin){ applyingRemote = true; render(); applyingRemote = false; }
-    const incoming = JSON.stringify({t:data.eventTitle||'', m:data.eventTime||'', s:data.state});
+    const incoming = JSON.stringify({t:data.eventTitle||'', m:data.eventTime||'', s:data.state, a:data.announce||'', w:data.webhook||''});
     if(incoming === lastSentJSON) return; // echo ของเราเอง
     applyingRemote = true;
     state = normalizeState(data.state);
