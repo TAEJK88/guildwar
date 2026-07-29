@@ -185,6 +185,10 @@
     box-shadow:0 10px 34px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.05);
   }
   .party{transition:transform .2s ease, box-shadow .2s ease;}
+  .party.locked{border-color:rgba(240,200,100,.65);}
+  .party.locked::before,.party.locked::after{border-color:#eec95f;}
+  .party.locked .phead{animation-play-state:paused, paused; border-left-color:#eec95f;}
+  .party.locked .slot{opacity:.85;}
   .party:hover{transform:translateY(-3px); box-shadow:0 14px 40px rgba(0,0,0,.55), 0 0 26px rgba(255,143,199,.16);}
   .party .phead{
     display:flex; align-items:center; gap:6px; margin-bottom:10px;
@@ -481,6 +485,8 @@ function cancelEdit(){
 }
 function deleteMember(id){
   if(!isAdmin && partyOf(id)){ toast('คนนี้อยู่ในตี้แล้ว ให้หัวกิลเป็นคนแก้นะ'); return; }
+  const dl = partyOf(id);
+  if(dl && dl.party.locked){ toast(LOCK_MSG); return; }
   removeFromParty(id);
   state.members = state.members.filter(m => m.id !== id);
   if(selectedMemberId === id) selectedMemberId = null;
@@ -495,19 +501,27 @@ function addParty(){
 }
 function deleteParty(pid){
   if(!isAdmin){ toast(ADMIN_MSG); return; }
+  const dp = state.parties.find(p => p.id === pid);
+  if(dp && dp.locked){ toast(LOCK_MSG); return; }
   state.parties = state.parties.filter(p => p.id !== pid);
   render();
 }
 function clearParty(pid){
   if(!isAdmin){ toast(ADMIN_MSG); return; }
   const p = state.parties.find(x => x.id === pid);
-  if(p) p.slots = Array(PARTY_SIZE).fill(null);
+  if(p){
+    if(p.locked){ toast(LOCK_MSG); return; }
+    p.slots = Array(PARTY_SIZE).fill(null);
+  }
   render();
 }
 function assignToSlot(memberId, partyId, slotIndex){
   if(!isAdmin){ toast(ADMIN_MSG); return; }
   const p = state.parties.find(x => x.id === partyId);
   if(!p) return;
+  if(p.locked){ toast(LOCK_MSG); return; }
+  const prevL = partyOf(memberId);
+  if(prevL && prevL.party.locked){ toast(LOCK_MSG); return; }
   const occupant = p.slots[slotIndex];
   if(occupant === memberId) return;
   const prevLoc = partyOf(memberId);
@@ -542,7 +556,11 @@ function onRosterDrop(ev){
   ev.preventDefault();
   document.getElementById('rosterPanel').classList.remove('dragover');
   const id = parseInt(ev.dataTransfer.getData('text/plain'), 10);
-  if(!isNaN(id)){ removeFromParty(id); render(); }
+  if(!isNaN(id)){
+    const loc = partyOf(id);
+    if(loc && loc.party.locked){ toast(LOCK_MSG); return; }
+    removeFromParty(id); render();
+  }
 }
 
 // ---------- click-to-assign (มือถือ) ----------
@@ -587,7 +605,7 @@ function autoArrange(){
   if(!isAdmin){ toast(ADMIN_MSG); return; }
   const un = state.members.filter(m => !partyOf(m.id) && m.att !== 'no');
   if(!un.length){ toast('ไม่มีคนว่างที่มาได้เหลือแล้ว'); return; }
-  const emptyCount = () => state.parties.reduce((a,p) => a + p.slots.filter(s => s === null).length, 0);
+  const emptyCount = () => state.parties.reduce((a,p) => a + (p.locked ? 0 : p.slots.filter(s => s === null).length), 0);
   while(emptyCount() < un.length)
     state.parties.push({id:state.nextId++, name:'ตี้ '+(state.parties.length+1), note:'', slots:Array(PARTY_SIZE).fill(null)});
   const prio = {heal:0, tank:1, support:2, dps:3};
@@ -596,7 +614,7 @@ function autoArrange(){
     const role = jobRole(m.job);
     let best = null, bestKey = Infinity;
     for(const p of state.parties){
-      if(p.slots.indexOf(null) === -1) continue;
+      if(p.locked || p.slots.indexOf(null) === -1) continue;
       const roleCount = p.slots.filter(s => s !== null && jobRole(memberById(s).job) === role).length;
       const total = p.slots.filter(s => s !== null).length;
       const key = roleCount*100 + total;
@@ -611,7 +629,7 @@ function clearAllParties(){
   if(!isAdmin){ toast(ADMIN_MSG); return; }
   if(!state.parties.some(p => p.slots.some(s => s !== null))){ toast('ตี้ว่างอยู่แล้ว'); return; }
   if(!window.confirm('เอาสมาชิกออกจากทุกตี้ใช่ไหม? (รายชื่อสมาชิกไม่หาย)')) return;
-  state.parties.forEach(p => p.slots = Array(PARTY_SIZE).fill(null));
+  state.parties.forEach(p => { if(!p.locked) p.slots = Array(PARTY_SIZE).fill(null); });
   render();
 }
 
@@ -754,6 +772,8 @@ function showHistory(){
 
 function slotRemove(id){
   if(typeof isAdmin !== 'undefined' && !isAdmin){ toast('👑 เฉพาะหัวกิลเท่านั้น'); return; }
+  const loc = partyOf(id);
+  if(loc && loc.party.locked){ toast(LOCK_MSG); return; }
   removeFromParty(id); render();
 }
 
@@ -780,7 +800,7 @@ function renderDigest(){
     }).filter(Boolean);
     const free = PARTY_SIZE - mems.length;
     return `<div class="dcard">
-      <div class="dname"><span>🚩 ${esc(p.name)}</span><span style="font-weight:400;color:var(--muted)">${mems.length}/${PARTY_SIZE}</span></div>
+      <div class="dname"><span>${p.locked ? '🔒 ' : ''}🚩 ${esc(p.name)}</span><span style="font-weight:400;color:var(--muted)">${mems.length}/${PARTY_SIZE}</span></div>
       ${p.note ? `<div class="dnote">📌 ${esc(p.note)}</div>` : ''}
       <div class="dmem">${mems.length ? mems.join(' · ') : '<span class="dfree">— ยังว่างทั้งตี้ —</span>'}</div>
       ${free > 0 && mems.length ? `<div class="dfree">เหลือว่าง ${free} ที่</div>` : ''}
@@ -802,7 +822,8 @@ function openPicker(id){
     const filled = p.slots.filter(s => s !== null).length;
     const full = filled >= PARTY_SIZE;
     const cur = loc && loc.party.id === p.id;
-    return `<button class="btn pickbtn${cur ? ' gold' : ''}"${full && !cur ? ' disabled style="opacity:.35;cursor:not-allowed"' : ''} onclick="pickParty(${p.id})">🚩 ${esc(p.name)} <span style="opacity:.75">(${filled}/${PARTY_SIZE})</span>${cur ? ' — อยู่ตี้นี้' : ''}${p.note ? `<div style="font-size:11px;opacity:.75;font-weight:400;">📌 ${esc(p.note)}</div>` : ''}</button>`;
+    const dis = (full || p.locked) && !cur;
+    return `<button class="btn pickbtn${cur ? ' gold' : ''}"${dis ? ' disabled style="opacity:.35;cursor:not-allowed"' : ''} onclick="pickParty(${p.id})">${p.locked ? '🔒 ' : ''}🚩 ${esc(p.name)} <span style="opacity:.75">(${filled}/${PARTY_SIZE})</span>${cur ? ' — อยู่ตี้นี้' : ''}${p.note ? `<div style="font-size:11px;opacity:.75;font-weight:400;">📌 ${esc(p.note)}</div>` : ''}</button>`;
   }).join('') + (loc ? `<button class="btn pickbtn" style="border-color:var(--red); color:#ff9d9d;" onclick="pickRemove()">✕ เอาออกจากตี้</button>` : '');
   document.getElementById('pickModal').style.display = 'flex';
 }
@@ -811,6 +832,7 @@ function pickParty(pid){
   if(pickId === null) return;
   const p = state.parties.find(x => x.id === pid);
   if(!p) return;
+  if(p.locked){ toast(LOCK_MSG); return; }
   const loc = partyOf(pickId);
   if(loc && loc.party.id === pid){ closePicker(); return; }
   const idx = p.slots.indexOf(null);
@@ -821,9 +843,24 @@ function pickParty(pid){
   toast(`✅ ส่ง ${nm} เข้า ${p.name} แล้ว`);
 }
 function pickRemove(){
-  if(pickId !== null){ removeFromParty(pickId); render(); }
+  if(pickId !== null){
+    const loc = partyOf(pickId);
+    if(loc && loc.party.locked){ toast(LOCK_MSG); closePicker(); return; }
+    removeFromParty(pickId); render();
+  }
   closePicker();
   toast('เอาออกจากตี้แล้ว');
+}
+
+// ---------- ล็อคตี้ ----------
+const LOCK_MSG = '🔒 ตี้นี้ถูกล็อคอยู่ — กดปุ่ม "ปลดล็อค" ใต้ตี้ก่อนถึงจะแก้ได้';
+function toggleLock(pid){
+  if(typeof isAdmin !== 'undefined' && !isAdmin){ toast('👑 เฉพาะหัวกิลเท่านั้น'); return; }
+  const p = state.parties.find(x => x.id === pid);
+  if(!p) return;
+  p.locked = !p.locked;
+  render();
+  toast(p.locked ? '🔒 ล็อค "'+p.name+'" แล้ว — จัดทับ/ลาก/เคลียร์/ลบ ไม่ได้จนกว่าจะปลด' : '🔓 ปลดล็อค "'+p.name+'" แล้ว');
 }
 
 // ---------- render ----------
@@ -891,10 +928,10 @@ function render(){
   }
   // parties
   document.getElementById('partiesArea').innerHTML = state.parties.map(p => `
-    <div class="party">
+    <div class="party${p.locked ? ' locked' : ''}">
       <div class="phead"><span class="flag">🚩</span>
         <input data-pid="${p.id}" data-kind="pname" value="${esc(p.name)}" ${isAdmin?'':'readonly'} onchange="renameParty(${p.id},this.value)">
-        <span class="pips" title="${p.slots.filter(s=>s!==null).length}/${PARTY_SIZE}">${p.slots.map(s=>s!==null?'◆':'<span class="off">◇</span>').join('')}</span>
+        ${p.locked ? '<span title="ตี้ถูกล็อค" style="font-size:14px;">🔒</span>' : ''}<span class="pips" title="${p.slots.filter(s=>s!==null).length}/${PARTY_SIZE}">${p.slots.map(s=>s!==null?'◆':'<span class="off">◇</span>').join('')}</span>
       </div>
       <input class="pnote" data-pid="${p.id}" data-kind="pnote" placeholder="${isAdmin?'📌 หน้าที่ตี้ เช่น บุกเสา / กันเอ็ม / ล่าหัว':''}" value="${esc(p.note||'')}" ${isAdmin?'':'readonly'} onchange="setNote(${p.id},this.value)">
       <div class="slots">
@@ -910,6 +947,7 @@ function render(){
       </div>
       ${compHTML(p)}
       <div class="pfoot">
+        <button class="btn small" onclick="toggleLock(${p.id})">${p.locked ? '🔓 ปลดล็อค' : '🔒 ล็อคตี้'}</button>
         <button class="btn small" onclick="copyOneParty(${p.id})">📋 ก๊อปตี้นี้</button>
         <button class="btn small" onclick="clearParty(${p.id})">↩ เคลียร์</button>
         <button class="btn small" onclick="deleteParty(${p.id})">🗑 ลบตี้</button>
@@ -1132,7 +1170,7 @@ function randRoomId(){
 function serializeState(){
   return {
     members: state.members.map(m => ({id:m.id, name:m.name, job:m.job, att:m.att || ''})),
-    parties: state.parties.map(p => ({id:p.id, name:p.name, note:p.note||'', slots:p.slots.map(s => s === null ? -1 : s)})),
+    parties: state.parties.map(p => ({id:p.id, name:p.name, note:p.note||'', locked:p.locked ? 1 : 0, slots:p.slots.map(s => s === null ? -1 : s)})),
     nextId: state.nextId,
     history: state.history || [],
   };
@@ -1145,7 +1183,7 @@ function normalizeState(raw){
       const v = src[i];
       return (v === undefined || v === null || v === -1) ? null : v;
     });
-    return {id:p.id, name:p.name || 'ตี้', note:p.note || '', slots};
+    return {id:p.id, name:p.name || 'ตี้', note:p.note || '', locked:!!p.locked, slots};
   });
   const nextId = raw.nextId || Math.max(0, ...members.map(m=>m.id), ...parties.map(p=>p.id)) + 1;
   return {members, parties, nextId, history: Object.values(raw.history || {})};
