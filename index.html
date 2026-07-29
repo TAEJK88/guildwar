@@ -81,8 +81,8 @@
   #eventTitle{width:250px;} #eventTime{width:210px;}
   .btn{
     position:relative; background:linear-gradient(180deg,#274069,#182849);
-    color:var(--text); border:1px solid #3a5f95; border-radius:4px; padding:8px 16px;
-    font-size:13.5px; font-family:inherit; cursor:pointer; transition:.18s; white-space:nowrap;
+    color:var(--text); border:1px solid #4a6da8; border-radius:4px; padding:9px 17px;
+    font-size:14px; font-weight:600; font-family:inherit; cursor:pointer; transition:.18s; white-space:nowrap;
     clip-path:polygon(9px 0, 100% 0, 100% calc(100% - 9px), calc(100% - 9px) 100%, 0 100%, 0 9px);
   }
   .btn:hover{border-color:var(--gold); color:var(--gold2); box-shadow:0 0 14px rgba(125,196,255,.3); transform:translateY(-1px);}
@@ -92,7 +92,7 @@
     box-shadow:0 0 16px rgba(125,196,255,.35), inset 0 1px 0 rgba(255,255,255,.5);
   }
   .btn.gold:hover{filter:brightness(1.12); color:#2b1020;}
-  .btn.small{padding:4px 10px; font-size:12px;}
+  .btn.small{padding:5px 11px; font-size:12.5px;}
   .layout{
     max-width:1280px; margin:0 auto; display:grid;
     grid-template-columns:580px 1fr; gap:16px; align-items:start;
@@ -171,6 +171,12 @@
     background:none; border:none; color:var(--muted); cursor:pointer; font-size:14px; padding:2px 4px; border-radius:4px; z-index:1;
   }
   .chip .del:hover{color:var(--red); background:rgba(224,85,85,.15);}
+  .digest{display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:10px;}
+  .dcard{border:1px solid var(--line); border-left:3px solid var(--gold); border-radius:4px; padding:8px 10px; background:rgba(255,255,255,.03); font-size:12.5px;}
+  .dcard .dname{color:var(--gold2); font-weight:700; display:flex; justify-content:space-between; gap:6px; margin-bottom:2px;}
+  .dcard .dnote{color:var(--pink2); font-size:11.5px; margin-bottom:4px;}
+  .dcard .dmem{color:var(--text); line-height:1.7;}
+  .dcard .dfree{color:var(--muted); font-style:italic; font-size:11.5px; margin-top:2px;}
   .parties{display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:14px;}
   .party{
     position:relative; background:linear-gradient(180deg,#182642, #111a30);
@@ -224,6 +230,9 @@
   body.member .pfoot, body.member #partyMgmtRow, body.member #saveBtn, body.member #openBtn, body.member .slot .del{display:none !important;}
   body.member .slot.empty-click:hover{border-color:#3b5c8c; cursor:default; box-shadow:inset 0 2px 6px rgba(0,0,0,.4);}
   body.member .chip{cursor:default;}
+  #pickBody{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
+  .pickbtn{clip-path:none; text-align:left; width:100%;}
+  @media(max-width:600px){ #pickBody{grid-template-columns:1fr;} }
   .att{background:none; border:none; cursor:pointer; font-size:13px; padding:2px 3px; border-radius:4px;}
   .att:hover{background:rgba(255,255,255,.12);}
   .chip.att-no{opacity:.5; filter:saturate(.4);}
@@ -270,6 +279,11 @@
   <button class="btn adm" onclick="copyAdminLink()">👑 ลิงก์หัวกิล</button>
   <span id="connStatus" style="font-size:12.5px; padding:6px 12px; border:1px solid var(--line); border-radius:4px; color:var(--muted);">⚪ ออฟไลน์</span>
   <span id="lastUpd" style="font-size:11.5px; color:var(--muted);"></span>
+</div>
+
+<div class="panel" id="digestWrap" style="max-width:1280px; margin:0 auto 16px; position:relative; z-index:1; display:none;">
+  <h2 style="cursor:pointer; margin-bottom:0;" onclick="toggleDigest()">📋 สรุปตี้รอบนี้ <span class="count" id="digestToggle">▾ ซ่อน</span></h2>
+  <div id="digestBody" class="digest" style="margin-top:10px;"></div>
 </div>
 
 <div class="layout">
@@ -319,6 +333,12 @@
 </div>
 
 <div class="summary" id="summaryBar"></div>
+<div id="pickModal" style="display:none; position:fixed; inset:0; z-index:50; background:rgba(4,8,18,.78); backdrop-filter:blur(4px); align-items:center; justify-content:center;" onclick="closePicker()">
+  <div class="panel" style="max-width:580px; width:92%; max-height:80vh; overflow-y:auto;" onclick="event.stopPropagation()">
+    <h2 style="display:flex; justify-content:space-between;"><span id="pickTitle">ส่งเข้าตี้</span><span class="count" style="cursor:pointer" onclick="closePicker()">✕ ปิด</span></h2>
+    <div id="pickBody" style="margin-top:10px;"></div>
+  </div>
+</div>
 <div id="histModal" style="display:none; position:fixed; inset:0; z-index:50; background:rgba(4,8,18,.78); backdrop-filter:blur(4px); align-items:center; justify-content:center;" onclick="this.style.display='none'">
   <div class="panel" style="max-width:540px; width:92%; max-height:80vh; overflow-y:auto;" onclick="event.stopPropagation()">
     <h2>🗂 ประวัติเช็คชื่อ <span class="count" style="cursor:pointer" onclick="document.getElementById('histModal').style.display='none'">✕ ปิด</span></h2>
@@ -511,8 +531,7 @@ function onRosterDrop(ev){
 // ---------- click-to-assign (มือถือ) ----------
 function onChipClick(memberId){
   if(!isAdmin) return;
-  selectedMemberId = (selectedMemberId === memberId) ? null : memberId;
-  render();
+  openPicker(memberId);
 }
 function onSlotClick(partyId, slotIndex){
   if(selectedMemberId !== null) assignToSlot(selectedMemberId, partyId, slotIndex);
@@ -721,6 +740,75 @@ function slotRemove(id){
   removeFromParty(id); render();
 }
 
+// ---------- บอร์ดสรุปตี้ ----------
+let digestHidden = false;
+function toggleDigest(){
+  digestHidden = !digestHidden;
+  renderDigest();
+}
+function renderDigest(){
+  const wrap = document.getElementById('digestWrap');
+  if(!wrap) return;
+  const hasAny = state.parties.some(p => p.slots.some(s => s !== null));
+  wrap.style.display = hasAny ? 'block' : 'none';
+  if(!hasAny) return;
+  document.getElementById('digestToggle').textContent = digestHidden ? '▸ แสดง' : '▾ ซ่อน';
+  const body = document.getElementById('digestBody');
+  body.style.display = digestHidden ? 'none' : 'grid';
+  if(digestHidden) return;
+  body.innerHTML = state.parties.map(p => {
+    const mems = p.slots.filter(s => s !== null).map(id => {
+      const m = memberById(id); if(!m) return '';
+      return `${jobInfo(m.job).emoji} ${esc(m.name)}`;
+    }).filter(Boolean);
+    const free = PARTY_SIZE - mems.length;
+    return `<div class="dcard">
+      <div class="dname"><span>🚩 ${esc(p.name)}</span><span style="font-weight:400;color:var(--muted)">${mems.length}/${PARTY_SIZE}</span></div>
+      ${p.note ? `<div class="dnote">📌 ${esc(p.note)}</div>` : ''}
+      <div class="dmem">${mems.length ? mems.join(' · ') : '<span class="dfree">— ยังว่างทั้งตี้ —</span>'}</div>
+      ${free > 0 && mems.length ? `<div class="dfree">เหลือว่าง ${free} ที่</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+// ---------- เมนูเลือกตี้ (คลิกชื่อแล้วเลือกตี้ได้เลย ไม่ต้องลากไกล) ----------
+let pickId = null;
+function openPicker(id){
+  if(typeof isAdmin !== 'undefined' && !isAdmin) return;
+  const m = memberById(id);
+  if(!m) return;
+  pickId = id;
+  const loc = partyOf(id);
+  document.getElementById('pickTitle').innerHTML = `ส่ง <span style="color:var(--gold2)">${esc(m.name)}</span> ไปตี้ไหน?`;
+  const body = document.getElementById('pickBody');
+  body.innerHTML = state.parties.map(p => {
+    const filled = p.slots.filter(s => s !== null).length;
+    const full = filled >= PARTY_SIZE;
+    const cur = loc && loc.party.id === p.id;
+    return `<button class="btn pickbtn${cur ? ' gold' : ''}"${full && !cur ? ' disabled style="opacity:.35;cursor:not-allowed"' : ''} onclick="pickParty(${p.id})">🚩 ${esc(p.name)} <span style="opacity:.75">(${filled}/${PARTY_SIZE})</span>${cur ? ' — อยู่ตี้นี้' : ''}${p.note ? `<div style="font-size:11px;opacity:.75;font-weight:400;">📌 ${esc(p.note)}</div>` : ''}</button>`;
+  }).join('') + (loc ? `<button class="btn pickbtn" style="border-color:var(--red); color:#ff9d9d;" onclick="pickRemove()">✕ เอาออกจากตี้</button>` : '');
+  document.getElementById('pickModal').style.display = 'flex';
+}
+function closePicker(){ document.getElementById('pickModal').style.display = 'none'; pickId = null; }
+function pickParty(pid){
+  if(pickId === null) return;
+  const p = state.parties.find(x => x.id === pid);
+  if(!p) return;
+  const loc = partyOf(pickId);
+  if(loc && loc.party.id === pid){ closePicker(); return; }
+  const idx = p.slots.indexOf(null);
+  if(idx === -1){ toast('ตี้นี้เต็มแล้ว'); return; }
+  const nm = memberById(pickId).name;
+  assignToSlot(pickId, pid, idx);
+  closePicker();
+  toast(`✅ ส่ง ${nm} เข้า ${p.name} แล้ว`);
+}
+function pickRemove(){
+  if(pickId !== null){ removeFromParty(pickId); render(); }
+  closePicker();
+  toast('เอาออกจากตี้แล้ว');
+}
+
 // ---------- render ----------
 function chipHTML(m, inSlot){
   const ji = jobInfo(m.job);
@@ -799,7 +887,7 @@ function render(){
             ondragleave="this.classList.remove('dragover')" ondrop="onSlotDrop(event,${p.id},${i})"
             onclick="onSlotClick(${p.id},${i})">
             <span class="num">${i+1}</span>
-            ${m ? chipHTML(m,true) : '<span class="ph">— ว่าง (ลากมาวาง หรือคลิกเลือกชื่อแล้วคลิกที่นี่) —</span>'}
+            ${m ? chipHTML(m,true) : '<span class="ph">— ว่าง —</span>'}
           </div>`;
         }).join('')}
       </div>
@@ -826,6 +914,8 @@ function render(){
   const attN = state.members.filter(m => m.att === 'no').length;
   document.getElementById('summaryBar').innerHTML =
     `สมาชิกทั้งหมด <b>${state.members.length}</b> คน · ลงตี้แล้ว <b>${assignedCount}</b> · ยังไม่มีตี้ <b>${un}</b> · จำนวนตี้ <b>${state.parties.length}</b> · เช็คชื่อ: ✅ <b>${attY}</b> ❌ <b>${attN}</b> ❓ <b>${state.members.length - attY - attN}</b>`;
+
+  renderDigest();
 
   renderMyBar();
   scheduleSave(); // sync ขึ้นห้องออนไลน์ (ถ้าเชื่อมต่ออยู่)
