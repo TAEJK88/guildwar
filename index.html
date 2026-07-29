@@ -320,11 +320,15 @@
     <div class="addrow">
       <input type="text" id="searchBox" placeholder="🔍 ค้นหาชื่อ / อาชีพ..." oninput="render()" style="width:auto;flex:1.4;margin-bottom:0">
       <select id="roleFilter" onchange="render()" style="flex:1">
-        <option value="">ทุกบทบาท</option>
-        <option value="tank">🛡️ แท้งค์</option>
-        <option value="heal">💚 ฮีล</option>
-        <option value="support">✨ ซัพพอร์ต</option>
-        <option value="dps">⚔️ ดาเมจ</option>
+        <option value="">ทุกสายอาชีพ</option>
+        <option value="line:sword">⚔️ สายนักดาบ</option>
+        <option value="line:mage">🔮 สายเวท</option>
+        <option value="line:archer">🏹 สายธนู</option>
+        <option value="line:aco">✨ สายพระ</option>
+        <option value="line:mer">🔨 สายพ่อค้า</option>
+        <option value="line:thief">🗡️ สายโจร</option>
+        <option value="line:gun">🔫 มือปืน</option>
+        <option value="line:wolf">🐺 หมาป่าเดียวดาย</option>
         <option value="att:yes">✅ มา</option>
         <option value="att:no">❌ ไม่มา</option>
         <option value="att:none">❓ ยังไม่ตอบ</option>
@@ -585,20 +589,42 @@ const JOB_ROLE = {
   'เซจ (Sage)':'support', 'บาร์ด (Bard)':'support', 'แดนเซอร์ (Dancer)':'support', 'โร้ก (Rogue)':'support',
 };
 const jobRole = job => JOB_ROLE[job] || 'dps';
+const JOB_LINE = {
+  'อัศวิน (Knight)':'sword', 'ครูเสด (Crusader)':'sword',
+  'วิซาร์ด (Wizard)':'mage', 'เซจ (Sage)':'mage',
+  'ฮันเตอร์ (Hunter)':'archer', 'บาร์ด (Bard)':'archer', 'แดนเซอร์ (Dancer)':'archer',
+  'พรีสต์ (Priest)':'aco', 'มังค์ (Monk)':'aco',
+  'แบล็คสมิธ (Blacksmith)':'mer', 'อัลเคมิสต์ (Alchemist)':'mer',
+  'แอสแซสซิน (Assassin)':'thief', 'โร้ก (Rogue)':'thief',
+  'มือปืน (Gunslinger)':'gun', 'หมาป่าเดียวดาย (Lone Wolf)':'wolf',
+};
+const LINE_META = {
+  sword:{emoji:'⚔️', label:'นักดาบ'},
+  mage:{emoji:'🔮', label:'เวท'},
+  archer:{emoji:'🏹', label:'ธนู'},
+  aco:{emoji:'✨', label:'พระ'},
+  mer:{emoji:'🔨', label:'พ่อค้า'},
+  thief:{emoji:'🗡️', label:'โจร'},
+  gun:{emoji:'🔫', label:'มือปืน'},
+  wolf:{emoji:'🐺', label:'หมาป่า'},
+  etc:{emoji:'❔', label:'อื่น ๆ'},
+};
+const jobLine = job => JOB_LINE[job] || 'etc';
 function setNote(pid, v){
   if(!isAdmin){ toast(ADMIN_MSG); return; }
   const p = state.parties.find(x => x.id === pid);
   if(p){ p.note = v.trim(); render(); }
 }
 function compHTML(p){
-  const counts = {tank:0, heal:0, support:0, dps:0};
+  const counts = {};
   let filled = 0;
-  p.slots.forEach(s => { if(s !== null){ filled++; counts[jobRole(memberById(s).job)]++; } });
+  p.slots.forEach(s => { if(s !== null){ filled++; const l = jobLine(memberById(s).job); counts[l] = (counts[l] || 0) + 1; } });
   if(!filled) return '';
-  const parts = Object.entries(counts).filter(([,c]) => c > 0)
-    .map(([r,c]) => `<span>${ROLE_META[r].emoji} ${ROLE_META[r].label} ×${c}</span>`);
-  if(counts.heal === 0) parts.push('<span class="warn">⚠️ ไม่มีฮีล</span>');
-  if(counts.tank === 0) parts.push('<span class="warn">⚠️ ไม่มีแท้งค์</span>');
+  const order = ['sword','mage','archer','aco','mer','thief','gun','wolf','etc'];
+  const parts = order.filter(l => counts[l])
+    .map(l => `<span>${LINE_META[l].emoji} ${LINE_META[l].label} ×${counts[l]}</span>`);
+  if(!counts.aco) parts.push('<span class="warn">⚠️ ไม่มีสายพระ (ฮีล)</span>');
+  if(!counts.sword) parts.push('<span class="warn">⚠️ ไม่มีสายนักดาบ (แท้งค์)</span>');
   return `<div class="comp">${parts.join('')}</div>`;
 }
 function autoArrange(){
@@ -906,6 +932,7 @@ function render(){
     : rf === 'att:yes' ? m.att === 'yes'
     : rf === 'att:no' ? m.att === 'no'
     : rf === 'att:none' ? !m.att
+    : rf.startsWith('line:') ? jobLine(m.job) === rf.slice(5)
     : jobRole(m.job) === rf;
   let list = state.members.filter(m =>
     (!q || m.name.toLowerCase().includes(q) || m.job.toLowerCase().includes(q)) && passRF(m));
