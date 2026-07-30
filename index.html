@@ -178,6 +178,9 @@
   body.member .dcard{cursor:default;}
   .dcard .dname{color:var(--gold2); font-weight:700; display:flex; justify-content:space-between; gap:6px; margin-bottom:2px;}
   .dcard .dname > span:first-child{color:#fff; animation:nameglow 3.2s ease-in-out infinite;}
+  .dnedit{background:transparent; border:none; border-bottom:1px dashed transparent; color:#fff; font-weight:700; font-family:inherit; font-size:12.5px; min-width:0; flex:1; padding:0 2px;}
+  .dnedit:focus{outline:none; border-bottom-color:var(--pink); background:rgba(255,143,199,.08);}
+  body.member .dnedit{pointer-events:none;}
   .dcard .dnote{color:var(--pink2); font-size:11.5px; margin-bottom:4px;}
   .dcard .dmem{color:var(--text); line-height:1.7;}
   .dcard .dfree{color:var(--muted); font-style:italic; font-size:11.5px; margin-top:2px;}
@@ -823,6 +826,11 @@ function renderDigest(){
   const body = document.getElementById('digestBody');
   body.style.display = digestHidden ? 'none' : 'grid';
   if(digestHidden) return;
+  let fi = null;
+  const dae = document.activeElement;
+  if(dae && dae.classList && dae.classList.contains('dnedit')){
+    fi = {pid: dae.dataset.pid, value: dae.value, ss: dae.selectionStart, se: dae.selectionEnd};
+  }
   body.innerHTML = state.parties.map(p => {
     const mems = p.slots.filter(s => s !== null).map(id => {
       const m = memberById(id); if(!m) return '';
@@ -830,12 +838,20 @@ function renderDigest(){
     }).filter(Boolean);
     const free = PARTY_SIZE - mems.length;
     return `<div class="dcard" draggable="true" ondragstart="dgDragStart(event,${p.id})" ondragover="event.preventDefault();this.classList.add('dragover')" ondragleave="this.classList.remove('dragover')" ondrop="dgDrop(event,${p.id})">
-      <div class="dname"><span>${p.locked ? '🔒 ' : ''}🚩 ${esc(p.name)}</span><span style="font-weight:400;color:var(--muted)">${mems.length}/${PARTY_SIZE}</span></div>
+      <div class="dname"><span style="display:flex;align-items:center;gap:3px;flex:1;min-width:0;">${p.locked ? '🔒 ' : ''}🚩 <input class="dnedit" data-pid="${p.id}" value="${esc(p.name)}" ${(typeof isAdmin === 'undefined' || isAdmin) ? '' : 'readonly'} title="คลิกเพื่อแก้ชื่อตี้" onmousedown="event.stopPropagation()" onfocus="this.closest('.dcard').setAttribute('draggable','false')" onblur="this.closest('.dcard').setAttribute('draggable','true')" onchange="renameParty(${p.id},this.value)"></span><span style="font-weight:400;color:var(--muted)">${mems.length}/${PARTY_SIZE}</span></div>
       ${p.note ? `<div class="dnote">📌 ${esc(p.note)}</div>` : ''}
       <div class="dmem">${mems.length ? mems.join(' · ') : '<span class="dfree">— ยังว่างทั้งตี้ —</span>'}</div>
       ${free > 0 && mems.length ? `<div class="dfree">เหลือว่าง ${free} ที่</div>` : ''}
     </div>`;
   }).join('');
+  if(fi){
+    const el2 = body.querySelector(`.dnedit[data-pid="${fi.pid}"]`);
+    if(el2){
+      el2.value = fi.value;
+      el2.focus();
+      try{ el2.setSelectionRange(fi.ss, fi.se); }catch(e){}
+    }
+  }
 }
 
 // ---------- เมนูเลือกตี้ (คลิกชื่อแล้วเลือกตี้ได้เลย ไม่ต้องลากไกล) ----------
