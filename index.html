@@ -172,7 +172,10 @@
   }
   .chip .del:hover{color:var(--red); background:rgba(224,85,85,.15);}
   .digest{display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:10px;}
-  .dcard{border:1px solid var(--line); border-left:3px solid var(--gold); border-radius:4px; padding:8px 10px; background:rgba(255,255,255,.03); font-size:12.5px;}
+  .dcard{border:1px solid var(--line); border-left:3px solid var(--gold); border-radius:4px; padding:8px 10px; background:rgba(255,255,255,.03); font-size:12.5px; cursor:grab; transition:.15s;}
+  .dcard:active{cursor:grabbing;}
+  .dcard.dragover{border-color:var(--pink); box-shadow:0 0 14px rgba(255,143,199,.5); transform:scale(1.03);}
+  body.member .dcard{cursor:default;}
   .dcard .dname{color:var(--gold2); font-weight:700; display:flex; justify-content:space-between; gap:6px; margin-bottom:2px;}
   .dcard .dname > span:first-child{color:#fff; animation:nameglow 3.2s ease-in-out infinite;}
   .dcard .dnote{color:var(--pink2); font-size:11.5px; margin-bottom:4px;}
@@ -221,7 +224,7 @@
   .pips .off{color:#3b5c8c; text-shadow:none;}
   .pnote{width:100%; background:rgba(14,10,26,.6); border:1px dashed #3b5c8c; border-radius:4px; color:#c6d8f2; font-family:inherit; font-size:12px; padding:4px 8px; margin-bottom:8px;}
   .pnote:focus{outline:none; border-color:var(--gold);}
-  .comp{display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; font-size:11.5px;}
+  .comp{display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; font-size:11.5px; overflow:hidden;}
   .comp span{background:rgba(255,255,255,.06); border:1px solid var(--line); border-radius:3px; padding:1px 7px; color:var(--muted);}
   .comp span.warn{color:#ffb3b3; border-color:rgba(224,85,85,.55); background:rgba(224,85,85,.12);}
   .slots{display:flex; flex-direction:column; gap:6px;}
@@ -236,7 +239,8 @@
   .slot.empty-click:hover{border-color:var(--gold); cursor:pointer; box-shadow:inset 0 0 10px rgba(125,196,255,.1);}
   .slot .ph{font-size:12px; color:#4d6a95; font-style:italic;}
   .slot .chip{flex:1; padding:4px 7px;}
-  .party .pfoot{display:flex; gap:6px; margin-top:10px; justify-content:flex-end;}
+  .party .pfoot{display:flex; gap:5px; margin-top:10px; justify-content:center; flex-wrap:wrap;}
+  .party .pfoot .btn.small{padding:4px 8px; font-size:11.5px; flex-shrink:0;}
   .summary{max-width:1280px; margin:16px auto 0; text-align:center; font-size:13px; color:var(--muted); letter-spacing:.3px;}
   .summary b{color:var(--gold2);}
   #toast{
@@ -303,7 +307,7 @@
 </div>
 
 <div class="panel" id="digestWrap" style="max-width:1280px; margin:0 auto 16px; position:relative; z-index:1; display:none;">
-  <h2 style="cursor:pointer; margin-bottom:0;" onclick="toggleDigest()">📋 สรุปตี้รอบนี้ <span class="count" id="digestToggle">▾ ซ่อน</span></h2>
+  <h2 style="cursor:pointer; margin-bottom:0;" onclick="toggleDigest()">📋 สรุปตี้รอบนี้ <span class="count"><span class="adm">↔️ ลากการ์ดเพื่อสลับตำแหน่งตี้ · </span><span id="digestToggle">▾ ซ่อน</span></span></h2>
   <div id="digestBody" class="digest" style="margin-top:10px;"></div>
 </div>
 
@@ -825,7 +829,7 @@ function renderDigest(){
       return `${jobInfo(m.job).emoji} ${esc(m.name)}`;
     }).filter(Boolean);
     const free = PARTY_SIZE - mems.length;
-    return `<div class="dcard">
+    return `<div class="dcard" draggable="true" ondragstart="dgDragStart(event,${p.id})" ondragover="event.preventDefault();this.classList.add('dragover')" ondragleave="this.classList.remove('dragover')" ondrop="dgDrop(event,${p.id})">
       <div class="dname"><span>${p.locked ? '🔒 ' : ''}🚩 ${esc(p.name)}</span><span style="font-weight:400;color:var(--muted)">${mems.length}/${PARTY_SIZE}</span></div>
       ${p.note ? `<div class="dnote">📌 ${esc(p.note)}</div>` : ''}
       <div class="dmem">${mems.length ? mems.join(' · ') : '<span class="dfree">— ยังว่างทั้งตี้ —</span>'}</div>
@@ -913,6 +917,29 @@ function movePartyTo(idx){
   closePicker();
   render();
   toast('↔️ ย้าย "' + p.name + '" ไปตำแหน่งที่ ' + (idx+1) + ' แล้ว');
+}
+
+// ---------- ลากสลับตำแหน่งตี้ในบอร์ดสรุป ----------
+let dgSrc = null;
+function dgDragStart(ev, pid){
+  if(typeof isAdmin !== 'undefined' && !isAdmin){ ev.preventDefault(); return; }
+  dgSrc = pid;
+  ev.dataTransfer.effectAllowed = 'move';
+  ev.dataTransfer.setData('text/plain', 'party');
+}
+function dgDrop(ev, pid){
+  ev.preventDefault();
+  ev.currentTarget.classList.remove('dragover');
+  if(typeof isAdmin !== 'undefined' && !isAdmin) return;
+  if(dgSrc === null || dgSrc === pid){ dgSrc = null; return; }
+  const from = state.parties.findIndex(p => p.id === dgSrc);
+  const to = state.parties.findIndex(p => p.id === pid);
+  dgSrc = null;
+  if(from === -1 || to === -1) return;
+  const [p] = state.parties.splice(from, 1);
+  state.parties.splice(to, 0, p);
+  render();
+  toast('↔️ ย้าย "' + p.name + '" ไปตำแหน่งที่ ' + (to+1) + ' แล้ว');
 }
 
 // ---------- render ----------
