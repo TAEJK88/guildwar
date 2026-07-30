@@ -395,6 +395,8 @@
   <button class="btn" onclick="undoLast()">↩️ ย้อนกลับ</button>
   <button class="btn" onclick="resetAtt()">🔄 รีเซ็ตเช็คชื่อ</button>
   <button class="btn" onclick="toggleColors()">🎨 ไฮไลท์สี</button>
+  <button class="btn" onclick="saveTemplate()">📑 เซฟผังตี้</button>
+  <button class="btn" onclick="openTemplates()">📚 โหลดผัง</button>
 </div>
 
 <div class="summary" id="summaryBar"></div>
@@ -466,6 +468,7 @@ let state = {
   history: [],   // ประวัติเช็คชื่อรายสัปดาห์
   colorsOn: true,      // เปิด/ปิดไฮไลท์สีตี้
   colorLabels: null,   // ความหมายของแต่ละสี
+  templates: [],       // ผังตี้ที่เซฟไว้
 };
 let selectedMemberId = null;
 let histStack = [], lastRenderJSON = null, undoing = false;
@@ -1064,6 +1067,66 @@ function dnEdit(pid, btn){
   inp.select();
 }
 
+// ---------- เทมเพลตผังตี้ ----------
+function saveTemplate(){
+  if(typeof isAdmin !== 'undefined' && !isAdmin){ toast('👑 เฉพาะหัวกิลเท่านั้น'); return; }
+  if(!state.parties.some(p => p.slots.some(s => s !== null))){ toast('ยังไม่มีการจัดตี้ให้เซฟ'); return; }
+  const name = window.prompt('ตั้งชื่อผังตี้ชุดนี้ (เช่น ผังบุก / ผังรับ / ผังวันเสาร์)');
+  if(!name || !name.trim()) return;
+  if(!state.templates) state.templates = [];
+  state.templates.push({
+    name: name.trim(),
+    date: new Date().toLocaleDateString('th-TH', {day:'numeric', month:'short'}),
+    parties: state.parties.map(p => ({
+      name: p.name, note: p.note || '', color: p.color || '', locked: p.locked ? 1 : 0,
+      members: p.slots.map(s => s === null ? '' : (memberById(s) ? memberById(s).name : '')),
+    })),
+  });
+  if(state.templates.length > 10) state.templates.shift();
+  render();
+  toast('📑 เซฟผัง "' + name.trim() + '" แล้ว (' + state.templates.length + '/10 ชุด)');
+}
+function openTemplates(){
+  if(typeof isAdmin !== 'undefined' && !isAdmin){ toast('👑 เฉพาะหัวกิลเท่านั้น'); return; }
+  const ts = state.templates || [];
+  document.getElementById('pickTitle').innerHTML = '📚 ผังตี้ที่เซฟไว้ (' + ts.length + '/10)';
+  document.getElementById('pickBody').innerHTML = ts.length ? ts.map((t,i) =>
+    `<button class="btn pickbtn" onclick="applyTemplate(${i})">📑 ${esc(t.name)} <span style="opacity:.7">(${esc(t.date||'')} · ${t.parties.length} ตี้)</span></button>
+     <button class="btn pickbtn" style="border-color:var(--red); color:#ff9d9d;" onclick="deleteTemplate(${i})">🗑 ลบ "${esc(t.name)}"</button>`
+  ).join('') : '<div style="color:var(--muted); font-style:italic; grid-column:1/-1; text-align:center; padding:14px;">ยังไม่มีผังที่เซฟไว้ — จัดตี้เสร็จแล้วกดปุ่ม "📑 เซฟผังตี้" ก่อนนะ</div>';
+  document.getElementById('pickModal').style.display = 'flex';
+}
+function applyTemplate(i){
+  if(typeof isAdmin !== 'undefined' && !isAdmin){ toast('👑 เฉพาะหัวกิลเท่านั้น'); return; }
+  const t = (state.templates || [])[i];
+  if(!t) return;
+  if(!window.confirm('ใช้ผัง "' + t.name + '" แทนการจัดตี้ปัจจุบัน?\n(เซฟผังปัจจุบันก่อนถ้ายังไม่ได้เซฟ — กดย้อนกลับได้ถ้าพลาด)')) return;
+  const missing = [];
+  state.parties = t.parties.map(tp => {
+    const slots = (tp.members || []).map(nm => {
+      if(!nm) return null;
+      const m = state.members.find(x => x.name === nm);
+      if(!m){ missing.push(nm); return null; }
+      return m.id;
+    });
+    while(slots.length < PARTY_SIZE) slots.push(null);
+    return {id: state.nextId++, name: tp.name, note: tp.note || '', color: tp.color || '', locked: !!tp.locked, slots: slots.slice(0, PARTY_SIZE)};
+  });
+  closePicker();
+  render();
+  toast(missing.length
+    ? '📚 ใช้ผังแล้ว แต่หาไม่เจอ ' + missing.length + ' คน (' + missing.slice(0,4).join(', ') + (missing.length > 4 ? '…' : '') + ') — ช่องนั้นเว้นว่างไว้ให้'
+    : '📚 ใช้ผัง "' + t.name + '" เรียบร้อย');
+}
+function deleteTemplate(i){
+  if(typeof isAdmin !== 'undefined' && !isAdmin){ toast('👑 เฉพาะหัวกิลเท่านั้น'); return; }
+  const t = (state.templates || [])[i];
+  if(!t || !window.confirm('ลบผัง "' + t.name + '" ?')) return;
+  state.templates.splice(i, 1);
+  render();
+  openTemplates();
+}
+
 // ---------- render ----------
 function chipHTML(m, inSlot){
   const ji = jobInfo(m.job);
@@ -1384,6 +1447,7 @@ function serializeState(){
     history: state.history || [],
     colorsOn: state.colorsOn ? 1 : 0,
     colorLabels: state.colorLabels || null,
+    templates: state.templates || [],
   };
 }
 function normalizeState(raw){
@@ -1402,6 +1466,13 @@ function normalizeState(raw){
     history: Object.values(raw.history || {}),
     colorsOn: raw.colorsOn === undefined ? true : !!raw.colorsOn,
     colorLabels: raw.colorLabels || null,
+    templates: Object.values(raw.templates || {}).map(t => ({
+      name: t.name, date: t.date || '',
+      parties: Object.values(t.parties || {}).map(p => ({
+        name: p.name, note: p.note || '', color: p.color || '', locked: p.locked ? 1 : 0,
+        members: Object.values(p.members || {}),
+      })),
+    })),
   };
 }
 function scheduleSave(){
