@@ -201,10 +201,19 @@
   .party.c-blue{border-color:#5db2ff; border-top:3px solid #5db2ff;}
   .party.c-orange{border-color:#ffa14d; border-top:3px solid #ffa14d;}
   .party.c-green{border-color:#5ddb7f; border-top:3px solid #5ddb7f;}
-  .dcard.c-red{border-left-color:#ff5d5d; border-left-width:4px;}
-  .dcard.c-blue{border-left-color:#5db2ff; border-left-width:4px;}
-  .dcard.c-orange{border-left-color:#ffa14d; border-left-width:4px;}
-  .dcard.c-green{border-left-color:#5ddb7f; border-left-width:4px;}
+  .dcard.c-red{background:linear-gradient(135deg,#e04747,#a92626); border-color:#ff9d9d; border-left-color:#ffd0d0;}
+  .dcard.c-blue{background:linear-gradient(135deg,#3d8fe0,#2361b0); border-color:#9dcaff; border-left-color:#d3e8ff;}
+  .dcard.c-orange{background:linear-gradient(135deg,#e8873a,#c05f18); border-color:#ffc99d; border-left-color:#ffe3c9;}
+  .dcard.c-green{background:linear-gradient(135deg,#3dbb6a,#1f8f47); border-color:#9dedbb; border-left-color:#d2f7e0;}
+  .dcard.c-red, .dcard.c-blue, .dcard.c-orange, .dcard.c-green{
+    border-left-width:4px; text-shadow:0 1px 3px rgba(0,0,0,.5);
+    box-shadow:0 4px 14px rgba(0,0,0,.35);
+  }
+  .dcard.c-red .dmem, .dcard.c-blue .dmem, .dcard.c-orange .dmem, .dcard.c-green .dmem{color:#fff;}
+  .dcard.c-red .dnote, .dcard.c-blue .dnote, .dcard.c-orange .dnote, .dcard.c-green .dnote{color:#fff; opacity:.95;}
+  .dcard.c-red .dfree, .dcard.c-blue .dfree, .dcard.c-orange .dfree, .dcard.c-green .dfree{color:rgba(255,255,255,.85);}
+  .dcard.c-red .dname span, .dcard.c-blue .dname span, .dcard.c-orange .dname span, .dcard.c-green .dname span{color:#fff !important;}
+  .dcard.c-red .dhandle, .dcard.c-blue .dhandle, .dcard.c-orange .dhandle, .dcard.c-green .dhandle{color:rgba(255,255,255,.8);}
   .ctag{font-size:10.5px; color:#10131c; font-weight:700; border-radius:3px; padding:1px 8px; white-space:nowrap; flex-shrink:0;}
   .party:hover{transform:translateY(-3px); box-shadow:0 14px 40px rgba(0,0,0,.55), 0 0 26px rgba(255,143,199,.16);}
   .party .phead{
