@@ -201,6 +201,8 @@
   .party.c-blue{border-color:#5db2ff; border-top:3px solid #5db2ff;}
   .party.c-orange{border-color:#ffa14d; border-top:3px solid #ffa14d;}
   .party.c-green{border-color:#5ddb7f; border-top:3px solid #5ddb7f;}
+  .party.c-purple{border-color:#c08ae8; border-top:3px solid #c08ae8;}
+  .party.c-yellow{border-color:#e8d34c; border-top:3px solid #e8d34c;}
   .dcard.c-red{background:linear-gradient(135deg,#e04747,#a92626); border-color:#ff9d9d; border-left-color:#ffd0d0;}
   .dcard.c-blue{background:linear-gradient(135deg,#3d8fe0,#2361b0); border-color:#9dcaff; border-left-color:#d3e8ff;}
   .dcard.c-orange{background:linear-gradient(135deg,#e8873a,#c05f18); border-color:#ffc99d; border-left-color:#ffe3c9;}
@@ -214,6 +216,14 @@
   .dcard.c-red .dfree, .dcard.c-blue .dfree, .dcard.c-orange .dfree, .dcard.c-green .dfree{color:rgba(255,255,255,.85);}
   .dcard.c-red .dname span, .dcard.c-blue .dname span, .dcard.c-orange .dname span, .dcard.c-green .dname span{color:#fff !important;}
   .dcard.c-red .dhandle, .dcard.c-blue .dhandle, .dcard.c-orange .dhandle, .dcard.c-green .dhandle{color:rgba(255,255,255,.8);}
+  .dcard.c-purple{background:linear-gradient(135deg,#a45cd6,#7a35ab); border-color:#d9b3f2; border-left-color:#ecd9fa;}
+  .dcard.c-yellow{background:linear-gradient(135deg,#cfae2e,#997a14); border-color:#f2e29d; border-left-color:#faf0cd;}
+  .dcard.c-purple, .dcard.c-yellow{border-left-width:4px; text-shadow:0 1px 3px rgba(0,0,0,.5); box-shadow:0 4px 14px rgba(0,0,0,.35);}
+  .dcard.c-purple .dmem, .dcard.c-yellow .dmem{color:#fff;}
+  .dcard.c-purple .dnote, .dcard.c-yellow .dnote{color:#fff; opacity:.95;}
+  .dcard.c-purple .dfree, .dcard.c-yellow .dfree{color:rgba(255,255,255,.85);}
+  .dcard.c-purple .dname span, .dcard.c-yellow .dname span{color:#fff !important;}
+  .dcard.c-purple .dhandle, .dcard.c-yellow .dhandle{color:rgba(255,255,255,.8);}
   .ctag{font-size:10.5px; color:#10131c; font-weight:700; border-radius:3px; padding:1px 8px; white-space:nowrap; flex-shrink:0;}
   .party:hover{transform:translateY(-3px); box-shadow:0 14px 40px rgba(0,0,0,.55), 0 0 26px rgba(255,143,199,.16);}
   .party .phead{
@@ -987,12 +997,14 @@ function dgDrop(ev, pid){
 }
 
 // ---------- ไฮไลท์สีตี้ ----------
-const PARTY_COLORS = ['red','blue','orange','green'];
+const PARTY_COLORS = ['red','blue','orange','green','purple','yellow'];
 const COLOR_META = {
   red:{dot:'🔴', css:'#ff5d5d'},
   blue:{dot:'🔵', css:'#5db2ff'},
   orange:{dot:'🟠', css:'#ffa14d'},
   green:{dot:'🟢', css:'#5ddb7f'},
+  purple:{dot:'🟣', css:'#c08ae8'},
+  yellow:{dot:'🟡', css:'#e8d34c'},
 };
 function cycleColor(pid){
   if(typeof isAdmin !== 'undefined' && !isAdmin){ toast('👑 เฉพาะหัวกิลเท่านั้น'); return; }
@@ -1075,7 +1087,9 @@ function chipHTML(m, inSlot){
 function esc(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
 function render(){
-  if(!state.colorLabels) state.colorLabels = {red:'กันกลาง', blue:'กันบน', orange:'กันล่าง', green:'บ้านลอง'};
+  const _dl = {red:'กันกลาง', blue:'กันบน', orange:'กันล่าง', green:'บ้านลอง', purple:'ตี้สลับ', yellow:'ชาวต่างชาติ'};
+  if(!state.colorLabels) state.colorLabels = _dl;
+  else for(const k in _dl){ if(state.colorLabels[k] === undefined) state.colorLabels[k] = _dl[k]; }
   // เก็บประวัติไว้ย้อนกลับ
   const _nowJ = JSON.stringify({m:state.members, p:state.parties});
   const _remote = (typeof applyingRemote !== 'undefined' && applyingRemote);
