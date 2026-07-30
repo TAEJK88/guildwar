@@ -172,15 +172,9 @@
   }
   .chip .del:hover{color:var(--red); background:rgba(224,85,85,.15);}
   .digest{display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:10px;}
-  .dcard{border:1px solid var(--line); border-left:3px solid var(--gold); border-radius:4px; padding:8px 10px; background:rgba(255,255,255,.03); font-size:12.5px; cursor:grab; transition:.15s;}
-  .dcard:active{cursor:grabbing;}
-  .dcard.dragover{border-color:var(--pink); box-shadow:0 0 14px rgba(255,143,199,.5); transform:scale(1.03);}
-  body.member .dcard{cursor:default;}
+  .dcard{border:1px solid var(--line); border-left:3px solid var(--gold); border-radius:4px; padding:8px 10px; background:rgba(255,255,255,.03); font-size:12.5px;}
   .dcard .dname{color:var(--gold2); font-weight:700; display:flex; justify-content:space-between; gap:6px; margin-bottom:2px;}
   .dcard .dname > span:first-child{color:#fff; animation:nameglow 3.2s ease-in-out infinite;}
-  .dnedit{background:transparent; border:none; border-bottom:1px dashed transparent; color:#fff; font-weight:700; font-family:inherit; font-size:12.5px; min-width:0; flex:1; padding:0 2px;}
-  .dnedit:focus{outline:none; border-bottom-color:var(--pink); background:rgba(255,143,199,.08);}
-  body.member .dnedit{pointer-events:none;}
   .dcard .dnote{color:var(--pink2); font-size:11.5px; margin-bottom:4px;}
   .dcard .dmem{color:var(--text); line-height:1.7;}
   .dcard .dfree{color:var(--muted); font-style:italic; font-size:11.5px; margin-top:2px;}
@@ -227,7 +221,7 @@
   .pips .off{color:#3b5c8c; text-shadow:none;}
   .pnote{width:100%; background:rgba(14,10,26,.6); border:1px dashed #3b5c8c; border-radius:4px; color:#c6d8f2; font-family:inherit; font-size:12px; padding:4px 8px; margin-bottom:8px;}
   .pnote:focus{outline:none; border-color:var(--gold);}
-  .comp{display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; font-size:11.5px; overflow:hidden;}
+  .comp{display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; font-size:11.5px;}
   .comp span{background:rgba(255,255,255,.06); border:1px solid var(--line); border-radius:3px; padding:1px 7px; color:var(--muted);}
   .comp span.warn{color:#ffb3b3; border-color:rgba(224,85,85,.55); background:rgba(224,85,85,.12);}
   .slots{display:flex; flex-direction:column; gap:6px;}
@@ -242,8 +236,7 @@
   .slot.empty-click:hover{border-color:var(--gold); cursor:pointer; box-shadow:inset 0 0 10px rgba(125,196,255,.1);}
   .slot .ph{font-size:12px; color:#4d6a95; font-style:italic;}
   .slot .chip{flex:1; padding:4px 7px;}
-  .party .pfoot{display:flex; gap:5px; margin-top:10px; justify-content:center; flex-wrap:wrap;}
-  .party .pfoot .btn.small{padding:4px 8px; font-size:11.5px; flex-shrink:0;}
+  .party .pfoot{display:flex; gap:6px; margin-top:10px; justify-content:flex-end;}
   .summary{max-width:1280px; margin:16px auto 0; text-align:center; font-size:13px; color:var(--muted); letter-spacing:.3px;}
   .summary b{color:var(--gold2);}
   #toast{
@@ -310,7 +303,7 @@
 </div>
 
 <div class="panel" id="digestWrap" style="max-width:1280px; margin:0 auto 16px; position:relative; z-index:1; display:none;">
-  <h2 style="cursor:pointer; margin-bottom:0;" onclick="toggleDigest()">📋 สรุปตี้รอบนี้ <span class="count"><span class="adm">↔️ ลากการ์ดเพื่อสลับตำแหน่งตี้ · </span><span id="digestToggle">▾ ซ่อน</span></span></h2>
+  <h2 style="cursor:pointer; margin-bottom:0;" onclick="toggleDigest()">📋 สรุปตี้รอบนี้ <span class="count" id="digestToggle">▾ ซ่อน</span></h2>
   <div id="digestBody" class="digest" style="margin-top:10px;"></div>
 </div>
 
@@ -327,15 +320,11 @@
     <div class="addrow">
       <input type="text" id="searchBox" placeholder="🔍 ค้นหาชื่อ / อาชีพ..." oninput="render()" style="width:auto;flex:1.4;margin-bottom:0">
       <select id="roleFilter" onchange="render()" style="flex:1">
-        <option value="">ทุกสายอาชีพ</option>
-        <option value="line:sword">⚔️ สายนักดาบ</option>
-        <option value="line:mage">🔮 สายเวท</option>
-        <option value="line:archer">🏹 สายธนู</option>
-        <option value="line:aco">✨ สายพระ</option>
-        <option value="line:mer">🔨 สายพ่อค้า</option>
-        <option value="line:thief">🗡️ สายโจร</option>
-        <option value="line:gun">🔫 มือปืน</option>
-        <option value="line:wolf">🐺 หมาป่าเดียวดาย</option>
+        <option value="">ทุกบทบาท</option>
+        <option value="tank">🛡️ แท้งค์</option>
+        <option value="heal">💚 ฮีล</option>
+        <option value="support">✨ ซัพพอร์ต</option>
+        <option value="dps">⚔️ ดาเมจ</option>
         <option value="att:yes">✅ มา</option>
         <option value="att:no">❌ ไม่มา</option>
         <option value="att:none">❓ ยังไม่ตอบ</option>
@@ -596,42 +585,20 @@ const JOB_ROLE = {
   'เซจ (Sage)':'support', 'บาร์ด (Bard)':'support', 'แดนเซอร์ (Dancer)':'support', 'โร้ก (Rogue)':'support',
 };
 const jobRole = job => JOB_ROLE[job] || 'dps';
-const JOB_LINE = {
-  'อัศวิน (Knight)':'sword', 'ครูเสด (Crusader)':'sword',
-  'วิซาร์ด (Wizard)':'mage', 'เซจ (Sage)':'mage',
-  'ฮันเตอร์ (Hunter)':'archer', 'บาร์ด (Bard)':'archer', 'แดนเซอร์ (Dancer)':'archer',
-  'พรีสต์ (Priest)':'aco', 'มังค์ (Monk)':'aco',
-  'แบล็คสมิธ (Blacksmith)':'mer', 'อัลเคมิสต์ (Alchemist)':'mer',
-  'แอสแซสซิน (Assassin)':'thief', 'โร้ก (Rogue)':'thief',
-  'มือปืน (Gunslinger)':'gun', 'หมาป่าเดียวดาย (Lone Wolf)':'wolf',
-};
-const LINE_META = {
-  sword:{emoji:'⚔️', label:'นักดาบ'},
-  mage:{emoji:'🔮', label:'เวท'},
-  archer:{emoji:'🏹', label:'ธนู'},
-  aco:{emoji:'✨', label:'พระ'},
-  mer:{emoji:'🔨', label:'พ่อค้า'},
-  thief:{emoji:'🗡️', label:'โจร'},
-  gun:{emoji:'🔫', label:'มือปืน'},
-  wolf:{emoji:'🐺', label:'หมาป่า'},
-  etc:{emoji:'❔', label:'อื่น ๆ'},
-};
-const jobLine = job => JOB_LINE[job] || 'etc';
 function setNote(pid, v){
   if(!isAdmin){ toast(ADMIN_MSG); return; }
   const p = state.parties.find(x => x.id === pid);
   if(p){ p.note = v.trim(); render(); }
 }
 function compHTML(p){
-  const counts = {};
+  const counts = {tank:0, heal:0, support:0, dps:0};
   let filled = 0;
-  p.slots.forEach(s => { if(s !== null){ filled++; const l = jobLine(memberById(s).job); counts[l] = (counts[l] || 0) + 1; } });
+  p.slots.forEach(s => { if(s !== null){ filled++; counts[jobRole(memberById(s).job)]++; } });
   if(!filled) return '';
-  const order = ['sword','mage','archer','aco','mer','thief','gun','wolf','etc'];
-  const parts = order.filter(l => counts[l])
-    .map(l => `<span>${LINE_META[l].emoji} ${LINE_META[l].label} ×${counts[l]}</span>`);
-  if(!counts.aco) parts.push('<span class="warn">⚠️ ไม่มีสายพระ (ฮีล)</span>');
-  if(!counts.sword) parts.push('<span class="warn">⚠️ ไม่มีสายนักดาบ (แท้งค์)</span>');
+  const parts = Object.entries(counts).filter(([,c]) => c > 0)
+    .map(([r,c]) => `<span>${ROLE_META[r].emoji} ${ROLE_META[r].label} ×${c}</span>`);
+  if(counts.heal === 0) parts.push('<span class="warn">⚠️ ไม่มีฮีล</span>');
+  if(counts.tank === 0) parts.push('<span class="warn">⚠️ ไม่มีแท้งค์</span>');
   return `<div class="comp">${parts.join('')}</div>`;
 }
 function autoArrange(){
@@ -826,32 +793,19 @@ function renderDigest(){
   const body = document.getElementById('digestBody');
   body.style.display = digestHidden ? 'none' : 'grid';
   if(digestHidden) return;
-  let fi = null;
-  const dae = document.activeElement;
-  if(dae && dae.classList && dae.classList.contains('dnedit')){
-    fi = {pid: dae.dataset.pid, value: dae.value, ss: dae.selectionStart, se: dae.selectionEnd};
-  }
   body.innerHTML = state.parties.map(p => {
     const mems = p.slots.filter(s => s !== null).map(id => {
       const m = memberById(id); if(!m) return '';
       return `${jobInfo(m.job).emoji} ${esc(m.name)}`;
     }).filter(Boolean);
     const free = PARTY_SIZE - mems.length;
-    return `<div class="dcard" draggable="true" ondragstart="dgDragStart(event,${p.id})" ondragover="event.preventDefault();this.classList.add('dragover')" ondragleave="this.classList.remove('dragover')" ondrop="dgDrop(event,${p.id})">
-      <div class="dname"><span style="display:flex;align-items:center;gap:3px;flex:1;min-width:0;">${p.locked ? '🔒 ' : ''}🚩 <input class="dnedit" data-pid="${p.id}" value="${esc(p.name)}" ${(typeof isAdmin === 'undefined' || isAdmin) ? '' : 'readonly'} title="คลิกเพื่อแก้ชื่อตี้" onmousedown="event.stopPropagation()" onfocus="this.closest('.dcard').setAttribute('draggable','false')" onblur="this.closest('.dcard').setAttribute('draggable','true')" onchange="renameParty(${p.id},this.value)"></span><span style="font-weight:400;color:var(--muted)">${mems.length}/${PARTY_SIZE}</span></div>
+    return `<div class="dcard">
+      <div class="dname"><span>${p.locked ? '🔒 ' : ''}🚩 ${esc(p.name)}</span><span style="font-weight:400;color:var(--muted)">${mems.length}/${PARTY_SIZE}</span></div>
       ${p.note ? `<div class="dnote">📌 ${esc(p.note)}</div>` : ''}
       <div class="dmem">${mems.length ? mems.join(' · ') : '<span class="dfree">— ยังว่างทั้งตี้ —</span>'}</div>
       ${free > 0 && mems.length ? `<div class="dfree">เหลือว่าง ${free} ที่</div>` : ''}
     </div>`;
   }).join('');
-  if(fi){
-    const el2 = body.querySelector(`.dnedit[data-pid="${fi.pid}"]`);
-    if(el2){
-      el2.value = fi.value;
-      el2.focus();
-      try{ el2.setSelectionRange(fi.ss, fi.se); }catch(e){}
-    }
-  }
 }
 
 // ---------- เมนูเลือกตี้ (คลิกชื่อแล้วเลือกตี้ได้เลย ไม่ต้องลากไกล) ----------
@@ -873,7 +827,7 @@ function openPicker(id){
   }).join('') + (loc ? `<button class="btn pickbtn" style="border-color:var(--red); color:#ff9d9d;" onclick="pickRemove()">✕ เอาออกจากตี้</button>` : '');
   document.getElementById('pickModal').style.display = 'flex';
 }
-function closePicker(){ document.getElementById('pickModal').style.display = 'none'; pickId = null; movePid = null; }
+function closePicker(){ document.getElementById('pickModal').style.display = 'none'; pickId = null; }
 function pickParty(pid){
   if(pickId === null) return;
   const p = state.parties.find(x => x.id === pid);
@@ -907,55 +861,6 @@ function toggleLock(pid){
   p.locked = !p.locked;
   render();
   toast(p.locked ? '🔒 ล็อค "'+p.name+'" แล้ว — จัดทับ/ลาก/เคลียร์/ลบ ไม่ได้จนกว่าจะปลด' : '🔓 ปลดล็อค "'+p.name+'" แล้ว');
-}
-
-// ---------- ย้ายตำแหน่งตี้ (ทั้งตี้พร้อมสมาชิก) ----------
-let movePid = null;
-function openMoveParty(pid){
-  if(typeof isAdmin !== 'undefined' && !isAdmin){ toast('👑 เฉพาะหัวกิลเท่านั้น'); return; }
-  const p = state.parties.find(x => x.id === pid);
-  if(!p) return;
-  if(state.parties.length < 2){ toast('มีตี้เดียว ยังไม่มีที่ให้ย้าย'); return; }
-  movePid = pid;
-  const curIdx = state.parties.indexOf(p);
-  document.getElementById('pickTitle').innerHTML = `ย้าย <span style="color:var(--gold2)">${esc(p.name)}</span> (ทั้งตี้) ไปตำแหน่งไหน?`;
-  document.getElementById('pickBody').innerHTML = state.parties.map((q,i) =>
-    `<button class="btn pickbtn${i === curIdx ? ' gold' : ''}"${i === curIdx ? ' disabled style="opacity:.5;cursor:not-allowed"' : ''} onclick="movePartyTo(${i})">ตำแหน่งที่ ${i+1}${i === curIdx ? ' — อยู่ตรงนี้' : ` <span style="opacity:.7">(สลับกับ: ${esc(q.name)})</span>`}</button>`
-  ).join('');
-  document.getElementById('pickModal').style.display = 'flex';
-}
-function movePartyTo(idx){
-  if(movePid === null) return;
-  const cur = state.parties.findIndex(x => x.id === movePid);
-  if(cur === -1 || cur === idx){ closePicker(); return; }
-  const [p] = state.parties.splice(cur, 1);
-  state.parties.splice(idx, 0, p);
-  closePicker();
-  render();
-  toast('↔️ ย้าย "' + p.name + '" ไปตำแหน่งที่ ' + (idx+1) + ' แล้ว');
-}
-
-// ---------- ลากสลับตำแหน่งตี้ในบอร์ดสรุป ----------
-let dgSrc = null;
-function dgDragStart(ev, pid){
-  if(typeof isAdmin !== 'undefined' && !isAdmin){ ev.preventDefault(); return; }
-  dgSrc = pid;
-  ev.dataTransfer.effectAllowed = 'move';
-  ev.dataTransfer.setData('text/plain', 'party');
-}
-function dgDrop(ev, pid){
-  ev.preventDefault();
-  ev.currentTarget.classList.remove('dragover');
-  if(typeof isAdmin !== 'undefined' && !isAdmin) return;
-  if(dgSrc === null || dgSrc === pid){ dgSrc = null; return; }
-  const from = state.parties.findIndex(p => p.id === dgSrc);
-  const to = state.parties.findIndex(p => p.id === pid);
-  dgSrc = null;
-  if(from === -1 || to === -1) return;
-  const [p] = state.parties.splice(from, 1);
-  state.parties.splice(to, 0, p);
-  render();
-  toast('↔️ ย้าย "' + p.name + '" ไปตำแหน่งที่ ' + (to+1) + ' แล้ว');
 }
 
 // ---------- render ----------
@@ -1001,7 +906,6 @@ function render(){
     : rf === 'att:yes' ? m.att === 'yes'
     : rf === 'att:no' ? m.att === 'no'
     : rf === 'att:none' ? !m.att
-    : rf.startsWith('line:') ? jobLine(m.job) === rf.slice(5)
     : jobRole(m.job) === rf;
   let list = state.members.filter(m =>
     (!q || m.name.toLowerCase().includes(q) || m.job.toLowerCase().includes(q)) && passRF(m));
@@ -1043,7 +947,6 @@ function render(){
       </div>
       ${compHTML(p)}
       <div class="pfoot">
-        <button class="btn small" onclick="openMoveParty(${p.id})" title="ย้ายตี้นี้ทั้งตี้ไปตำแหน่งอื่น">↔️ ย้าย</button>
         <button class="btn small" onclick="toggleLock(${p.id})">${p.locked ? '🔓 ปลดล็อค' : '🔒 ล็อคตี้'}</button>
         <button class="btn small" onclick="copyOneParty(${p.id})">📋 ก๊อปตี้นี้</button>
         <button class="btn small" onclick="clearParty(${p.id})">↩ เคลียร์</button>
