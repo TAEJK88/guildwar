@@ -853,7 +853,7 @@ function openPicker(id){
   }).join('') + (loc ? `<button class="btn pickbtn" style="border-color:var(--red); color:#ff9d9d;" onclick="pickRemove()">✕ เอาออกจากตี้</button>` : '');
   document.getElementById('pickModal').style.display = 'flex';
 }
-function closePicker(){ document.getElementById('pickModal').style.display = 'none'; pickId = null; }
+function closePicker(){ document.getElementById('pickModal').style.display = 'none'; pickId = null; movePid = null; }
 function pickParty(pid){
   if(pickId === null) return;
   const p = state.parties.find(x => x.id === pid);
@@ -887,6 +887,32 @@ function toggleLock(pid){
   p.locked = !p.locked;
   render();
   toast(p.locked ? '🔒 ล็อค "'+p.name+'" แล้ว — จัดทับ/ลาก/เคลียร์/ลบ ไม่ได้จนกว่าจะปลด' : '🔓 ปลดล็อค "'+p.name+'" แล้ว');
+}
+
+// ---------- ย้ายตำแหน่งตี้ (ทั้งตี้พร้อมสมาชิก) ----------
+let movePid = null;
+function openMoveParty(pid){
+  if(typeof isAdmin !== 'undefined' && !isAdmin){ toast('👑 เฉพาะหัวกิลเท่านั้น'); return; }
+  const p = state.parties.find(x => x.id === pid);
+  if(!p) return;
+  if(state.parties.length < 2){ toast('มีตี้เดียว ยังไม่มีที่ให้ย้าย'); return; }
+  movePid = pid;
+  const curIdx = state.parties.indexOf(p);
+  document.getElementById('pickTitle').innerHTML = `ย้าย <span style="color:var(--gold2)">${esc(p.name)}</span> (ทั้งตี้) ไปตำแหน่งไหน?`;
+  document.getElementById('pickBody').innerHTML = state.parties.map((q,i) =>
+    `<button class="btn pickbtn${i === curIdx ? ' gold' : ''}"${i === curIdx ? ' disabled style="opacity:.5;cursor:not-allowed"' : ''} onclick="movePartyTo(${i})">ตำแหน่งที่ ${i+1}${i === curIdx ? ' — อยู่ตรงนี้' : ` <span style="opacity:.7">(สลับกับ: ${esc(q.name)})</span>`}</button>`
+  ).join('');
+  document.getElementById('pickModal').style.display = 'flex';
+}
+function movePartyTo(idx){
+  if(movePid === null) return;
+  const cur = state.parties.findIndex(x => x.id === movePid);
+  if(cur === -1 || cur === idx){ closePicker(); return; }
+  const [p] = state.parties.splice(cur, 1);
+  state.parties.splice(idx, 0, p);
+  closePicker();
+  render();
+  toast('↔️ ย้าย "' + p.name + '" ไปตำแหน่งที่ ' + (idx+1) + ' แล้ว');
 }
 
 // ---------- render ----------
@@ -974,6 +1000,7 @@ function render(){
       </div>
       ${compHTML(p)}
       <div class="pfoot">
+        <button class="btn small" onclick="openMoveParty(${p.id})" title="ย้ายตี้นี้ทั้งตี้ไปตำแหน่งอื่น">↔️ ย้าย</button>
         <button class="btn small" onclick="toggleLock(${p.id})">${p.locked ? '🔓 ปลดล็อค' : '🔒 ล็อคตี้'}</button>
         <button class="btn small" onclick="copyOneParty(${p.id})">📋 ก๊อปตี้นี้</button>
         <button class="btn small" onclick="clearParty(${p.id})">↩ เคลียร์</button>
