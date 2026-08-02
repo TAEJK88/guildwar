@@ -165,6 +165,8 @@
   .jicon svg{width:16px; height:16px; display:block;}
   .chip .info{flex:1; min-width:0;}
   .chip .nm{display:block; font-size:13.5px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; line-height:1.25;}
+  .chip .nm.ldr{color:#ffd257; text-shadow:0 0 7px rgba(255,210,87,.6);}
+  .dmemb.ldr{color:#ffd257 !important; font-weight:800; text-shadow:0 0 6px rgba(255,210,87,.5);}
   .chip .jb{display:block; font-size:10.5px; color:var(--muted); line-height:1.2;}
   .chip .tag{font-size:10.5px; color:var(--gold2); background:rgba(125,196,255,.14); border:1px solid rgba(125,196,255,.3); border-radius:3px; padding:1px 6px; white-space:nowrap;}
   .chip .del{
@@ -211,6 +213,7 @@
   .party.c-green{border-color:#5ddb7f; border-top:3px solid #5ddb7f;}
   .party.c-purple{border-color:#c08ae8; border-top:3px solid #c08ae8;}
   .party.c-yellow{border-color:#e8d34c; border-top:3px solid #e8d34c;}
+  .party.c-brown{border-color:#c29064; border-top:3px solid #c29064;}
   .dcard.c-red{background:linear-gradient(135deg,#e04747,#a92626); border-color:#ff9d9d; border-left-color:#ffd0d0;}
   .dcard.c-blue{background:linear-gradient(135deg,#3d8fe0,#2361b0); border-color:#9dcaff; border-left-color:#d3e8ff;}
   .dcard.c-orange{background:linear-gradient(135deg,#e8873a,#c05f18); border-color:#ffc99d; border-left-color:#ffe3c9;}
@@ -232,6 +235,12 @@
   .dcard.c-purple .dfree, .dcard.c-yellow .dfree{color:rgba(255,255,255,.85);}
   .dcard.c-purple .dname span, .dcard.c-yellow .dname span{color:#fff !important;}
   .dcard.c-purple .dhandle, .dcard.c-yellow .dhandle{color:rgba(255,255,255,.8);}
+  .dcard.c-brown{background:linear-gradient(135deg,#9c7048,#6e4a2a); border-color:#d9b892; border-left-color:#ecd9c2; border-left-width:4px; text-shadow:0 1px 3px rgba(0,0,0,.5); box-shadow:0 4px 14px rgba(0,0,0,.35);}
+  .dcard.c-brown .dmem{color:#fff;}
+  .dcard.c-brown .dnote{color:#fff; opacity:.95;}
+  .dcard.c-brown .dfree{color:rgba(255,255,255,.85);}
+  .dcard.c-brown .dname span{color:#fff !important;}
+  .dcard.c-brown .dhandle{color:rgba(255,255,255,.8);}
   .ctag{font-size:10.5px; color:#10131c; font-weight:700; border-radius:3px; padding:1px 8px; white-space:nowrap; flex-shrink:0;}
   .party:hover{transform:translateY(-3px); box-shadow:0 14px 40px rgba(0,0,0,.55), 0 0 26px rgba(255,143,199,.16);}
   .party .phead{
@@ -924,7 +933,8 @@ function renderDigest(){
   const makeCard = p => {
     const mems = p.slots.filter(s => s !== null).map((id, mi) => {
       const m = memberById(id); if(!m) return '';
-      return `<span class="dmemb"${admX ? ` onclick="event.stopPropagation();openPicker(${m.id})" title="กดเพื่อย้ายตี้ / เอาออก"` : ''}><span style="opacity:.6; display:inline-block; width:14px;">${mi+1}.</span> ${jobInfo(m.job).emoji} ${esc(m.name)}</span>`;
+      const isL = p.leader === id;
+      return `<span class="dmemb${isL ? ' ldr' : ''}"${admX ? ` onclick="event.stopPropagation();openPicker(${m.id})" title="กดเพื่อย้ายตี้ / เอาออก"` : ''}><span style="opacity:.6; display:inline-block; width:14px;">${mi+1}.</span> ${isL ? '👑 ' : ''}${jobInfo(m.job).emoji} ${esc(m.name)}</span>`;
     }).filter(Boolean);
     const resMems = (p.res || []).filter(s => s !== null).map(id => {
       const m = memberById(id); if(!m) return '';
@@ -998,7 +1008,9 @@ function openPicker(id){
       <button class="btn pickbtn${cur ? ' gold' : ''}" style="flex:1;${disMain ? 'opacity:.35;cursor:not-allowed;' : ''}"${disMain ? ' disabled' : ''} onclick="pickParty(${p.id})">${p.locked ? '🔒 ' : ''}🚩 ${esc(p.name)} <span style="opacity:.75">(${filled}/${PARTY_SIZE})</span>${cur ? ' — อยู่ตี้นี้' : ''}${resCur ? ' — ⬆ ดันขึ้นตัวจริง' : ''}${p.note ? `<div style="font-size:11px;opacity:.75;font-weight:400;">📌 ${esc(p.note)}</div>` : ''}</button>
       <button class="btn pickbtn" style="flex:0 0 auto; width:auto;${disRes ? 'opacity:.35;cursor:not-allowed;' : ''}"${disRes ? ' disabled' : ''} onclick="pickRes(${p.id})" title="ลงเป็นตัวสำรองตี้นี้">🪑${resFilled}/${RES_SIZE}</button>
     </div>`;
-  }).join('') + (loc ? `<button class="btn pickbtn" style="border-color:var(--red); color:#ff9d9d;" onclick="pickRemove()">✕ เอาออกจากตี้</button>` : '');
+  }).join('')
+  + (loc && !loc.res ? `<button class="btn pickbtn" style="border-color:#ffd257; color:#ffd257;" onclick="pickLeader()">${loc.party.leader === pickId ? '👑 ปลดจากหัวหน้าตี้' : '👑 ตั้งเป็นหัวหน้าตี้'}</button>` : '')
+  + (loc ? `<button class="btn pickbtn" style="border-color:var(--red); color:#ff9d9d;" onclick="pickRemove()">✕ เอาออกจากตี้</button>` : '');
   document.getElementById('pickModal').style.display = 'flex';
 }
 function closePicker(){ document.getElementById('pickModal').style.display = 'none'; pickId = null; movePid = null; }
@@ -1087,7 +1099,7 @@ function dgDrop(ev, pid){
 }
 
 // ---------- ไฮไลท์สีตี้ ----------
-const PARTY_COLORS = ['red','blue','orange','green','purple','yellow'];
+const PARTY_COLORS = ['red','blue','orange','green','purple','yellow','brown'];
 const COLOR_META = {
   red:{dot:'🔴', css:'#ff5d5d'},
   blue:{dot:'🔵', css:'#5db2ff'},
@@ -1095,6 +1107,7 @@ const COLOR_META = {
   green:{dot:'🟢', css:'#5ddb7f'},
   purple:{dot:'🟣', css:'#c08ae8'},
   yellow:{dot:'🟡', css:'#e8d34c'},
+  brown:{dot:'🟤', css:'#c29064'},
 };
 function cycleColor(pid){
   if(typeof isAdmin !== 'undefined' && !isAdmin){ toast('👑 เฉพาะหัวกิลเท่านั้น'); return; }
@@ -1475,6 +1488,24 @@ function pickRes(pid){
   toast('🪑 ลง ' + nm + ' เป็นตัวสำรอง ' + p.name + ' แล้ว');
 }
 
+// ---------- หัวหน้าตี้ ----------
+function pickLeader(){
+  if(typeof isAdmin !== 'undefined' && !isAdmin){ toast('👑 เฉพาะหัวกิลเท่านั้น'); return; }
+  if(pickId === null) return;
+  const loc = partyOf(pickId);
+  if(!loc || loc.res) return;
+  const m = memberById(pickId);
+  if(loc.party.leader === pickId){
+    loc.party.leader = null;
+    toast('ปลด "' + m.name + '" จากหัวหน้าตี้แล้ว');
+  } else {
+    loc.party.leader = pickId;
+    toast('👑 ตั้ง "' + m.name + '" เป็นหัวหน้า ' + loc.party.name + ' แล้ว');
+  }
+  closePicker();
+  render();
+}
+
 // ---------- render ----------
 function chipHTML(m, inSlot){
   const ji = jobInfo(m.job);
@@ -1492,14 +1523,17 @@ function chipHTML(m, inSlot){
   return `<div class="chip${sel}${asg}${attCls}" style="--jc:${ji.color};border-left-color:${ji.color}" draggable="${isAdmin}"
     ondragstart="onDragStart(event,${m.id})" onclick="onChipClick(${m.id})">
     ${iconHTML(ji)}
-    <span class="info"><span class="nm">${esc(m.name)}</span><span class="jb">${esc(m.job)}${m.grp ? ' · 🤝' + esc(m.grp) : ''}</span></span>
+    <span class="info"><span class="nm${loc && !loc.res && loc.party.leader === m.id ? ' ldr' : ''}">${loc && !loc.res && loc.party.leader === m.id ? '👑 ' : ''}${esc(m.name)}</span><span class="jb">${esc(m.job)}${m.grp ? ' · 🤝' + esc(m.grp) : ''}</span></span>
     ${tag}${attBtn}${editBtn}${delBtn}</div>`;
 }
 function esc(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
 function render(){
-  state.parties.forEach(p => { if(!p.res) p.res = Array(RES_SIZE).fill(null); });
-  const _dl = {red:'กันกลาง', blue:'กันบน', orange:'กันล่าง', green:'บ้านลอง', purple:'ตี้สลับ', yellow:'ชาวต่างชาติ'};
+  state.parties.forEach(p => {
+    if(!p.res) p.res = Array(RES_SIZE).fill(null);
+    if(p.leader && !p.slots.includes(p.leader)) p.leader = null; // หัวหน้าออกจากตี้ = ปลดอัตโนมัติ
+  });
+  const _dl = {red:'กันกลาง', blue:'กันบน', orange:'กันล่าง', green:'บ้านลอง', purple:'ตี้สลับ', yellow:'ชาวต่างชาติ', brown:'บ้านรอง'};
   if(!state.colorLabels) state.colorLabels = _dl;
   else for(const k in _dl){ if(state.colorLabels[k] === undefined) state.colorLabels[k] = _dl[k]; }
   // เก็บประวัติไว้ย้อนกลับ
@@ -1614,7 +1648,7 @@ function partyText(p, idx){
   p.slots.forEach((mid,i) => {
     if(mid !== null){
       const m = memberById(mid); const ji = jobInfo(m.job);
-      lines.push(`> ${i+1}. ${ji.emoji} **${m.name}** — ${m.job}`);
+      lines.push(`> ${i+1}. ${ji.emoji} **${m.name}**${p.leader === mid ? ' 👑 หัวหน้าตี้' : ''} — ${m.job}`);
     } else {
       lines.push(`> ${i+1}. ⬜ ว่าง`);
     }
@@ -1799,7 +1833,7 @@ function randRoomId(){
 function serializeState(){
   return {
     members: state.members.map(m => ({id:m.id, name:m.name, job:m.job, att:m.att || '', grp:m.grp || ''})),
-    parties: state.parties.map(p => ({id:p.id, name:p.name, note:p.note||'', locked:p.locked ? 1 : 0, color:p.color || '', slots:p.slots.map(s => s === null ? -1 : s), res:(p.res || Array(RES_SIZE).fill(null)).map(s => s === null ? -1 : s)})),
+    parties: state.parties.map(p => ({id:p.id, name:p.name, note:p.note||'', locked:p.locked ? 1 : 0, color:p.color || '', leader:p.leader || 0, slots:p.slots.map(s => s === null ? -1 : s), res:(p.res || Array(RES_SIZE).fill(null)).map(s => s === null ? -1 : s)})),
     nextId: state.nextId,
     history: state.history || [],
     colorsOn: state.colorsOn ? 1 : 0,
@@ -1820,7 +1854,7 @@ function normalizeState(raw){
       const v = resSrc[i];
       return (v === undefined || v === null || v === -1) ? null : v;
     });
-    return {id:p.id, name:p.name || 'ตี้', note:p.note || '', locked:!!p.locked, color:p.color || '', slots, res};
+    return {id:p.id, name:p.name || 'ตี้', note:p.note || '', locked:!!p.locked, color:p.color || '', leader:p.leader || null, slots, res};
   });
   const nextId = raw.nextId || Math.max(0, ...members.map(m=>m.id), ...parties.map(p=>p.id)) + 1;
   return {
