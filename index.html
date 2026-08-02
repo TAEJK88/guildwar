@@ -283,6 +283,8 @@
     pointer-events:none; z-index:99; box-shadow:0 8px 30px rgba(0,0,0,.6), 0 0 18px rgba(125,196,255,.25);
   }
   #toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+  .tgroup{display:flex; align-items:center; gap:6px; flex-wrap:wrap; border:1px solid var(--line); border-radius:6px; padding:8px 10px; background:rgba(255,255,255,.02);}
+  .tlabel{font-size:12.5px; color:var(--gold2); font-weight:700; margin-right:4px; white-space:nowrap;}
   .adm{display:none;}
   body.admin .adm{display:inline-block;}
   body.member .pfoot, body.member #partyMgmtRow, body.member #saveBtn, body.member #openBtn, body.member .slot .del{display:none !important;}
@@ -331,16 +333,38 @@
   <input type="text" id="eventTime" placeholder="วัน-เวลานัด เช่น อาทิตย์ 20:00" oninput="scheduleSave()">
   <button class="btn gold" onclick="copyDiscord()">📋 ก๊อปลง Discord</button>
   <button class="btn adm" onclick="sendWebhook()">🚀 ส่งเข้า Discord</button>
-  <button class="btn adm" onclick="sendAttSummary()">📊 สรุปเช็คชื่อ</button>
-  <button class="btn adm" onclick="setAnnounce()">📣 ประกาศ</button>
-  <button class="btn" id="saveBtn" onclick="exportData()">💾 บันทึกไฟล์</button>
-  <button class="btn" id="openBtn" onclick="document.getElementById('importFile').click()">📂 เปิดไฟล์</button>
-  <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
   <button class="btn" onclick="showHistory()">🗂 ประวัติ</button>
-  <button class="btn" onclick="copyRoomLink()">🔗 ลิงก์แจกสมาชิก</button>
-  <button class="btn adm" onclick="copyAdminLink()">👑 ลิงก์หัวกิล</button>
   <span id="connStatus" style="font-size:12.5px; padding:6px 12px; border:1px solid var(--line); border-radius:4px; color:var(--muted);">⚪ ออฟไลน์</span>
   <span id="lastUpd" style="font-size:11.5px; color:var(--muted);"></span>
+  <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+</div>
+
+<div class="panel adm" id="adminPanel" style="max-width:1280px; margin:0 auto 16px; padding:10px 14px; position:relative; z-index:1; display:none;">
+  <h2 style="cursor:pointer; margin-bottom:0; border-bottom:none; padding-bottom:0;" onclick="toggleAdminPanel()">🛠 เมนูหัวกิล <span class="count" id="adminPanelToggle">▾ ซ่อน</span></h2>
+  <div id="adminPanelBody" style="margin-top:10px; display:flex; flex-direction:column; gap:8px;">
+    <div class="tgroup"><span class="tlabel">📣 สื่อสาร</span>
+      <button class="btn small" onclick="setAnnounce()">📣 ประกาศ</button>
+      <button class="btn small" onclick="sendAttSummary()">📊 สรุปเช็คชื่อเข้าดิส</button>
+      <button class="btn small" onclick="copyRoomLink()">🔗 ลิงก์แจกสมาชิก</button>
+      <button class="btn small" onclick="copyAdminLink()">👑 ลิงก์หัวกิล</button>
+    </div>
+    <div class="tgroup"><span class="tlabel">⚔️ จัดตี้</span>
+      <button class="btn small gold" onclick="autoArrange()">🎲 จัดตี้อัตโนมัติ</button>
+      <button class="btn small" onclick="addParty()">➕ เพิ่มตี้ใหม่</button>
+      <button class="btn small" onclick="clearAllParties()">♻️ เคลียร์ทุกตี้</button>
+      <button class="btn small" onclick="undoLast()">↩️ ย้อนกลับ</button>
+      <button class="btn small" onclick="toggleColors()">🎨 ไฮไลท์สี</button>
+    </div>
+    <div class="tgroup"><span class="tlabel">🗄 คลังข้อมูล</span>
+      <button class="btn small" onclick="openRegistry()">📇 ทะเบียนกิล</button>
+      <button class="btn small" onclick="openGroups()">🤝 ตี้ประจำ</button>
+      <button class="btn small" onclick="saveTemplate()">📑 เซฟผังตี้</button>
+      <button class="btn small" onclick="openTemplates()">📚 โหลดผัง</button>
+      <button class="btn small" onclick="resetAtt()">🔄 รีเซ็ตเช็คชื่อรอบใหม่</button>
+      <button class="btn small" id="saveBtn" onclick="exportData()">💾 บันทึกไฟล์</button>
+      <button class="btn small" id="openBtn" onclick="document.getElementById('importFile').click()">📂 เปิดไฟล์</button>
+    </div>
+  </div>
 </div>
 
 <div class="notice" id="colorLegend" style="display:none; font-size:13px;"></div>
@@ -392,24 +416,17 @@
   </div>
 </div>
 
-<div id="partyMgmtRow" style="max-width:1280px; margin:14px auto 0; display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
-  <button class="btn" onclick="addParty()">➕ เพิ่มตี้ใหม่</button>
-  <button class="btn gold" onclick="autoArrange()">🎲 จัดตี้อัตโนมัติ</button>
-  <button class="btn" onclick="clearAllParties()">♻️ เคลียร์ทุกตี้</button>
-  <button class="btn" onclick="undoLast()">↩️ ย้อนกลับ</button>
-  <button class="btn" onclick="resetAtt()">🔄 รีเซ็ตเช็คชื่อ</button>
-  <button class="btn" onclick="toggleColors()">🎨 ไฮไลท์สี</button>
-  <button class="btn" onclick="saveTemplate()">📑 เซฟผังตี้</button>
-  <button class="btn" onclick="openTemplates()">📚 โหลดผัง</button>
-  <button class="btn" onclick="openGroups()">🤝 ตี้ประจำ</button>
-  <button class="btn" onclick="openRegistry()">📇 ทะเบียนกิล</button>
-</div>
-
 <div class="summary" id="summaryBar"></div>
 <div id="pickModal" style="display:none; position:fixed; inset:0; z-index:50; background:rgba(4,8,18,.78); backdrop-filter:blur(4px); align-items:center; justify-content:center;" onclick="closePicker()">
   <div class="panel" style="max-width:580px; width:92%; max-height:80vh; overflow-y:auto;" onclick="event.stopPropagation()">
     <h2 style="display:flex; justify-content:space-between;"><span id="pickTitle">ส่งเข้าตี้</span><span class="count" style="cursor:pointer" onclick="closePicker()">✕ ปิด</span></h2>
     <div id="pickBody" style="margin-top:10px;"></div>
+  </div>
+</div>
+<div id="attPop" style="display:none; position:fixed; inset:0; z-index:60; background:rgba(4,8,18,.82); backdrop-filter:blur(5px); align-items:center; justify-content:center;" onclick="closeAttPop()">
+  <div class="panel" style="max-width:430px; width:92%;" onclick="event.stopPropagation()">
+    <h2 style="justify-content:center; border-bottom:none;">📋 วันนี้มากิลวอมั้ย?</h2>
+    <div id="attPopBody"></div>
   </div>
 </div>
 <div id="histModal" style="display:none; position:fixed; inset:0; z-index:50; background:rgba(4,8,18,.78); backdrop-filter:blur(4px); align-items:center; justify-content:center;" onclick="this.style.display='none'">
@@ -1304,6 +1321,71 @@ function grpDissolve(){
   toast('ยุบกลุ่มแล้ว');
 }
 
+// ---------- Popup เช็คชื่อตอนเปิดเว็บ ----------
+let attPopShown = false;
+function maybeShowAttPop(){
+  if(attPopShown) return;
+  if(typeof isAdmin !== 'undefined' && isAdmin) return;
+  if(!state.members.length) return;
+  const me = myNameCur ? state.members.find(m => m.name === myNameCur) : null;
+  if(me && me.att) return; // ตอบรอบนี้ไปแล้ว
+  attPopShown = true;
+  renderAttPop();
+  document.getElementById('attPop').style.display = 'flex';
+}
+function renderAttPop(){
+  const me = myNameCur ? state.members.find(m => m.name === myNameCur) : null;
+  const body = document.getElementById('attPopBody');
+  if(me){
+    body.innerHTML = `<div style="text-align:center; margin-bottom:12px; font-size:15px;">สวัสดี <b style="color:var(--gold2)">${esc(me.name)}</b> 👋</div>
+      <div style="display:flex; gap:8px; justify-content:center;">
+        <button class="btn gold" onclick="attPopAnswer('yes')">✅ มา</button>
+        <button class="btn" onclick="attPopAnswer('no')">❌ ไม่มา</button>
+        <button class="btn" onclick="closeAttPop()">ไว้ก่อน</button>
+      </div>
+      <div style="text-align:center; margin-top:10px;"><span style="font-size:11.5px; color:var(--muted); cursor:pointer; text-decoration:underline;" onclick="clearMe();renderAttPop()">ไม่ใช่ ${esc(me.name)}? เปลี่ยนคน</span></div>`;
+  } else {
+    body.innerHTML = `<div style="margin-bottom:8px; text-align:center; font-size:13.5px;">เลือกชื่อของคุณจากรายชื่อ หรือพิมพ์ใหม่ถ้ายังไม่มี</div>
+      <input id="attPopName" list="attPopList" placeholder="🔍 พิมพ์ / เลือกชื่อตัวละคร" style="width:100%; background:var(--bg2); border:1px solid var(--line); border-radius:4px; color:var(--text); font-family:inherit; font-size:14px; padding:10px; margin-bottom:8px;">
+      <datalist id="attPopList">${state.members.map(m => `<option value="${esc(m.name)}">`).join('')}</datalist>
+      <select id="attPopJob" style="width:100%; background:var(--bg2); border:1px solid var(--line); border-radius:4px; color:var(--text); font-family:inherit; padding:9px; margin-bottom:4px;">${JOBS.map(j => `<option value="${esc(j.name)}">${j.emoji} ${esc(j.name)}</option>`).join('')}</select>
+      <div style="font-size:11px; color:var(--muted); margin-bottom:10px;">(เลือกอาชีพเฉพาะกรณีพิมพ์ชื่อใหม่ที่ยังไม่มีในรายชื่อ)</div>
+      <div style="display:flex; gap:8px; justify-content:center;">
+        <button class="btn gold" onclick="attPopAnswer('yes')">✅ มา</button>
+        <button class="btn" onclick="attPopAnswer('no')">❌ ไม่มา</button>
+        <button class="btn" onclick="closeAttPop()">ไว้ก่อน</button>
+      </div>`;
+  }
+}
+function attPopAnswer(v){
+  let me = myNameCur ? state.members.find(m => m.name === myNameCur) : null;
+  if(!me){
+    const nmEl = document.getElementById('attPopName');
+    const nm = nmEl ? nmEl.value.trim() : '';
+    if(!nm){ toast('⚠️ พิมพ์หรือเลือกชื่อก่อนนะ'); return; }
+    me = state.members.find(m => m.name === nm);
+    if(!me){
+      if(typeof curMode !== 'undefined' && curMode === 'mw' && state.members.length >= 50){ toast('⚠️ Monochrome War เต็ม 50 คนแล้ว'); return; }
+      me = {id: state.nextId++, name: nm, job: document.getElementById('attPopJob').value};
+      state.members.push(me);
+    }
+    lsSet('gwme_' + (roomId || 'local'), me.name);
+    myNameCur = me.name;
+  }
+  if(me.att !== v){ me.att = v; queueAttNotify(me); }
+  closeAttPop();
+  render();
+  toast(v === 'yes' ? '✅ เช็คชื่อ "มา" เรียบร้อย เจอกันในวอ!' : '❌ รับทราบ ไว้เจอกันรอบหน้านะ');
+}
+function closeAttPop(){ document.getElementById('attPop').style.display = 'none'; }
+function toggleAdminPanel(){
+  const b = document.getElementById('adminPanelBody');
+  const t = document.getElementById('adminPanelToggle');
+  const hidden = b.style.display === 'none';
+  b.style.display = hidden ? 'flex' : 'none';
+  t.textContent = hidden ? '▾ ซ่อน' : '▸ แสดง';
+}
+
 // ---------- render ----------
 function chipHTML(m, inSlot){
   const ji = jobInfo(m.job);
@@ -1692,6 +1774,8 @@ function setMode(){
   const mt = document.getElementById('modeTabs');
   if(mt) mt.style.display = online ? 'flex' : 'none';
   updateModeUI();
+  const ap = document.getElementById('adminPanel');
+  if(ap) ap.style.display = (online && isAdmin) ? 'block' : 'none';
   const nb = document.getElementById('noticeBar');
   if(online && !isAdmin){
     nb.innerHTML = '🙋 <b>โหมดสมาชิก</b> — พิมพ์ชื่อตัวละคร + เลือกอาชีพ แล้วกด "เพิ่มสมาชิก" ได้เลย เดี๋ยวหัวกิลจัดตี้ให้ หน้านี้อัปเดตสดอัตโนมัติ';
@@ -1704,6 +1788,9 @@ function initOnline(){
     && firebaseConfig.apiKey && !firebaseConfig.apiKey.includes('PASTE') && firebaseConfig.databaseURL;
   if(!configured){
     document.getElementById('setupBox').style.display = 'block';
+    document.body.classList.add('admin');
+    const apOff = document.getElementById('adminPanel');
+    if(apOff) apOff.style.display = 'block';
     document.getElementById('noticeBar').innerHTML = '💾 ตอนนี้อยู่โหมดออฟไลน์ — จัดตี้เสร็จอย่าลืมกด "บันทึกไฟล์" เก็บไว้';
     setStatus('offline');
     return;
@@ -1777,6 +1864,7 @@ function bindRoom(){
     if(selectedMemberId !== null && !memberById(selectedMemberId)) selectedMemberId = null;
     render();
     applyingRemote = false;
+    maybeShowAttPop();
   }, () => { setStatus('offline'); toast('⚠️ เชื่อมต่อฐานข้อมูลไม่ได้'); });
 }
 
