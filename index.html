@@ -415,6 +415,7 @@
     </div>
     <div class="addrow">
       <button class="btn small gold" id="addBtn" style="flex:1" onclick="addMember()">➕ เพิ่มสมาชิก</button>
+      <button class="btn small adm" style="flex:0 0 auto;" onclick="openBulk()">📋 วางรายชื่อชุดใหญ่</button>
     </div>
     <div class="addrow">
       <input type="text" id="searchBox" placeholder="🔍 ค้นหาชื่อ / อาชีพ..." oninput="render()" style="width:auto;flex:1.4;margin-bottom:0">
@@ -467,7 +468,7 @@
     <div id="histList"></div>
   </div>
 </div>
-<div style="text-align:center; font-size:10.5px; color:var(--muted); margin-top:16px; position:relative; z-index:1;" id="verTag">เวอร์ชัน 21 — ดึงรายชื่อกิลวอเข้า Monochrome 📥</div>
+<div style="text-align:center; font-size:10.5px; color:var(--muted); margin-top:16px; position:relative; z-index:1;" id="verTag">เวอร์ชัน 22 — วางรายชื่อชุดใหญ่ทีเดียว 📋</div>
 <div id="toast"></div>
 
 <script>
@@ -1624,6 +1625,64 @@ function importFromGw(){
     render();
     toast('📥 ดึงจากกิลวอมา ' + added + ' คน (รวมตอนนี้ ' + state.members.length + '/50)' + (full ? ' — เต็ม 50 หยุดพอดี' : ''));
   }).catch(() => toast('❌ ดึงรายชื่อไม่สำเร็จ ลองใหม่อีกครั้ง'));
+}
+
+// ---------- วางรายชื่อชุดใหญ่ (bulk paste) ----------
+function openBulk(){
+  if(typeof isAdmin !== 'undefined' && !isAdmin){ toast('👑 เฉพาะหัวกิลเท่านั้น'); return; }
+  document.getElementById('pickTitle').innerHTML = '📋 วางรายชื่อทีเดียว';
+  document.getElementById('pickBody').innerHTML =
+    `<div style="grid-column:1/-1; font-size:12.5px; color:var(--muted); line-height:1.6;">วางรายชื่อคั่นด้วยลูกน้ำ (,) หรือขึ้นบรรทัดใหม่ — ตัวเลขที่คั่นอยู่ (2, 3, 4...) ระบบจะมองเป็นตัวแบ่งตี้และตัดทิ้งให้เอง</div>
+    <textarea id="bulkText" style="grid-column:1/-1; width:100%; height:150px; background:var(--bg2); color:var(--text); border:1px solid var(--line); border-radius:4px; font-family:inherit; font-size:13px; padding:10px;" placeholder="เช่น  น้อนนิ่ม,JKBOY,MingKumo,meili,BABYBOO 2,Boxdog,CNine-C9,..."></textarea>
+    <select id="bulkJob" style="grid-column:1/-1; background:var(--bg2); color:var(--text); border:1px solid var(--line); border-radius:4px; padding:9px; font-family:inherit;">${JOBS.map(j => `<option value="${esc(j.name)}"${j.name === 'อื่น ๆ' ? ' selected' : ''}>${j.emoji} ${esc(j.name)}</option>`).join('')}</select>
+    <div style="grid-column:1/-1; font-size:11px; color:var(--muted); margin-top:-4px;">อาชีพเริ่มต้นของทุกชื่อที่วาง (มาแก้รายคนทีหลังได้ด้วยปุ่ม ✏️)</div>
+    <label style="grid-column:1/-1; font-size:13.5px; cursor:pointer;"><input type="checkbox" id="bulkAssign" checked style="transform:scale(1.2); margin-right:6px;"> จัดลงตี้ให้เลย — เรียงตามลำดับที่วาง ทีละ ${PARTY_SIZE} คนต่อตี้ (สร้างตี้เพิ่มให้อัตโนมัติ)</label>
+    <button class="btn pickbtn gold" style="grid-column:1/-1;" onclick="runBulk()">➕ เพิ่มรายชื่อทั้งหมด</button>`;
+  document.getElementById('pickModal').style.display = 'flex';
+}
+function runBulk(){
+  const txt = document.getElementById('bulkText').value;
+  const doAssign = document.getElementById('bulkAssign').checked;
+  const job = document.getElementById('bulkJob').value;
+  const names = [];
+  txt.split(/[,\n]/).forEach(tk => {
+    let t = tk.trim();
+    if(!t) return;
+    if(/^\d+\.?$/.test(t)) return;             // ตัวเลขล้วน = ตัวแบ่งตี้
+    t = t.replace(/\s+\d{1,2}$/, '').trim();   // เลขต่อท้ายชื่อ = ตัวแบ่งตี้
+    if(t && !names.includes(t)) names.push(t);
+  });
+  if(!names.length){ toast('⚠️ ยังไม่มีชื่อให้เพิ่มนะ'); return; }
+  let added = 0, dup = 0, full = false;
+  const ids = [];
+  for(const nm of names){
+    const ex = state.members.find(m => m.name === nm);
+    if(ex){ dup++; ids.push(ex.id); continue; }
+    if(typeof curMode !== 'undefined' && curMode === 'mw' && state.members.length >= 50){ full = true; break; }
+    const m = {id: state.nextId++, name: nm, job};
+    state.members.push(m);
+    ids.push(m.id);
+    added++;
+  }
+  if(doAssign){
+    let pi = 0;
+    for(const id of ids){
+      if(partyOf(id)) continue;
+      for(;;){
+        if(pi >= state.parties.length){
+          state.parties.push({id: state.nextId++, name: 'ตี้ ' + (state.parties.length + 1), note: '', slots: Array(PARTY_SIZE).fill(null), res: Array(RES_SIZE).fill(null)});
+        }
+        const p = state.parties[pi];
+        const si = p.locked ? -1 : p.slots.indexOf(null);
+        if(si === -1){ pi++; continue; }
+        p.slots[si] = id;
+        break;
+      }
+    }
+  }
+  closePicker();
+  render();
+  toast('📋 เพิ่ม ' + added + ' คน' + (dup ? ' · ซ้ำ ' + dup + ' คน' : '') + (doAssign ? ' และจัดลงตี้เรียบร้อย' : '') + (full ? ' — หยุดที่ 50 คนเต็ม' : ''));
 }
 
 // ---------- render ----------
