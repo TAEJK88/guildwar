@@ -384,6 +384,7 @@
       <button class="btn small" onclick="clearAllParties()">♻️ เคลียร์ทุกตี้</button>
       <button class="btn small" onclick="undoLast()">↩️ ย้อนกลับ</button>
       <button class="btn small" onclick="toggleColors()">🎨 ไฮไลท์สี</button>
+      <button class="btn small" onclick="openSlotRules()">🔢 ล็อคลำดับตี้</button>
     </div>
     <div class="tgroup"><span class="tlabel">🗄 คลังข้อมูล</span>
       <button class="btn small" onclick="openRegistry()">📇 ทะเบียนกิล</button>
@@ -465,7 +466,7 @@
     <div id="histList"></div>
   </div>
 </div>
-<div style="text-align:center; font-size:10.5px; color:var(--muted); margin-top:16px; position:relative; z-index:1;" id="verTag">เวอร์ชัน 19 — สมาชิก 4 ช่องอยู่บน · โซนตี้อยู่ล่าง</div>
+<div style="text-align:center; font-size:10.5px; color:var(--muted); margin-top:16px; position:relative; z-index:1;" id="verTag">เวอร์ชัน 20 — ล็อคลำดับตี้ 🔢</div>
 <div id="toast"></div>
 
 <script>
@@ -524,6 +525,8 @@ let state = {
   colorsOn: true,      // เปิด/ปิดไฮไลท์สีตี้
   colorLabels: null,   // ความหมายของแต่ละสี
   templates: [],       // ผังตี้ที่เซฟไว้
+  slotRulesOn: false,  // เปิด/ปิดล็อคลำดับตี้
+  slotRules: null,     // สายอาชีพประจำช่องที่ 1-5
 };
 let selectedMemberId = null;
 let histStack = [], lastRenderJSON = null, undoing = false;
@@ -632,6 +635,14 @@ function assignToSlot(memberId, partyId, slotIndex){
   if(prevL && prevL.party.locked){ toast(LOCK_MSG); return; }
   const occupant = p.slots[slotIndex];
   if(occupant === memberId) return;
+  if(!ruleOk(slotIndex, memberById(memberId))){
+    toast('🔢 ช่องที่ ' + (slotIndex + 1) + ' ล็อคไว้สำหรับ ' + ruleName(state.slotRules[slotIndex]));
+    return;
+  }
+  if(occupant !== null && prevL && !prevL.res && !ruleOk(prevL.slotIndex, memberById(occupant))){
+    toast('🔢 สลับไม่ได้ — ช่องที่ ' + (prevL.slotIndex + 1) + ' ล็อคไว้สำหรับ ' + ruleName(state.slotRules[prevL.slotIndex]));
+    return;
+  }
   const prevLoc = partyOf(memberId);
   removeFromParty(memberId);
   if(occupant !== null){
@@ -747,22 +758,24 @@ function autoArrange(){
       target = {id: state.nextId++, name: 'ตี้ ' + (state.parties.length + 1), note: '', slots: Array(PARTY_SIZE).fill(null)};
       state.parties.push(target);
     }
-    g.forEach(m => { const idx = target.slots.indexOf(null); if(idx !== -1) target.slots[idx] = m.id; });
+    g.forEach(m => { const idx = findSlotFor(target, m); if(idx !== -1) target.slots[idx] = m.id; });
   }
   const rest = un.filter(m => !partyOf(m.id));
   const prio = {heal:0, tank:1, support:2, dps:3};
   rest.sort((a,b) => prio[jobRole(a.job)] - prio[jobRole(b.job)]);
   for(const m of rest){
     const role = jobRole(m.job);
-    let best = null, bestKey = Infinity;
+    let best = null, bestKey = Infinity, bestIdx = -1;
     for(const p of state.parties){
-      if(p.locked || p.slots.indexOf(null) === -1) continue;
+      if(p.locked) continue;
+      const si = findSlotFor(p, m);
+      if(si === -1) continue;
       const roleCount = p.slots.filter(s => s !== null && jobRole(memberById(s).job) === role).length;
       const total = p.slots.filter(s => s !== null).length;
       const key = roleCount*100 + total;
-      if(key < bestKey){ best = p; bestKey = key; }
+      if(key < bestKey){ best = p; bestKey = key; bestIdx = si; }
     }
-    if(best) best.slots[best.slots.indexOf(null)] = m.id;
+    if(best) best.slots[bestIdx] = m.id;
   }
   render();
   toast('🎲 จัดให้แล้ว '+un.length+' คน — ลากสลับเองต่อได้เลย');
@@ -1035,8 +1048,11 @@ function pickParty(pid){
   if(p.locked){ toast(LOCK_MSG); return; }
   const loc = partyOf(pickId);
   if(loc && loc.party.id === pid && !loc.res){ closePicker(); return; }
-  const idx = p.slots.indexOf(null);
-  if(idx === -1){ toast('ตี้นี้เต็มแล้ว'); return; }
+  const idx = findSlotFor(p, memberById(pickId));
+  if(idx === -1){
+    toast(p.slots.indexOf(null) === -1 ? 'ตี้นี้เต็มแล้ว' : '🔢 ช่องว่างที่เหลือของตี้นี้ ล็อคสายอาชีพไว้ไม่ตรงกับคนนี้');
+    return;
+  }
   const nm = memberById(pickId).name;
   assignToSlot(pickId, pid, idx);
   closePicker();
@@ -1547,6 +1563,47 @@ function locateMe(){
   toast('📍 ' + myLocText(m));
 }
 
+// ---------- ล็อคลำดับตี้ (สายอาชีพประจำช่อง) ----------
+function ruleOk(slotIndex, member){
+  if(!state.slotRulesOn || !member) return true;
+  const r = (state.slotRules || [])[slotIndex];
+  if(!r) return true;
+  return jobLine(member.job) === r;
+}
+function ruleName(r){
+  return r && LINE_META[r] ? LINE_META[r].emoji + ' สาย' + LINE_META[r].label : '';
+}
+function findSlotFor(p, member){
+  for(let i = 0; i < PARTY_SIZE; i++){
+    if(p.slots[i] === null && ruleOk(i, member)) return i;
+  }
+  return -1;
+}
+function openSlotRules(){
+  if(typeof isAdmin !== 'undefined' && !isAdmin){ toast('👑 เฉพาะหัวกิลเท่านั้น'); return; }
+  if(!state.slotRules) state.slotRules = ['','','','',''];
+  document.getElementById('pickTitle').innerHTML = '🔢 ล็อคลำดับตี้ — สายอาชีพประจำช่อง (ใช้กับทุกตี้)';
+  const lineOpts = r => `<option value="">— ไม่ล็อค —</option>` +
+    Object.keys(LINE_META).filter(k => k !== 'etc').map(k =>
+      `<option value="${k}"${r === k ? ' selected' : ''}>${LINE_META[k].emoji} สาย${LINE_META[k].label}</option>`).join('');
+  document.getElementById('pickBody').innerHTML =
+    `<button class="btn pickbtn${state.slotRulesOn ? ' gold' : ''}" style="grid-column:1/-1;" onclick="toggleSlotRules()">${state.slotRulesOn ? '🟢 เปิดใช้งานอยู่ — กดเพื่อปิด' : '⚪ ปิดอยู่ — กดเพื่อเปิดใช้งาน'}</button>` +
+    state.slotRules.map((r,i) =>
+      `<div style="display:flex; align-items:center; gap:8px; grid-column:1/-1;"><b style="width:66px; flex-shrink:0;">ช่องที่ ${i+1}</b><select onchange="setSlotRule(${i}, this.value)" style="flex:1; background:var(--bg2); color:var(--text); border:1px solid var(--line); border-radius:4px; padding:8px; font-family:inherit;">${lineOpts(r)}</select></div>`).join('') +
+    `<div style="grid-column:1/-1; font-size:11.5px; color:var(--muted); line-height:1.6;">เมื่อเปิดใช้งาน: ลากวาง / เมนูเลือกตี้ / 🎲 จัดอัตโนมัติ จะยอมให้ช่องที่ล็อครับเฉพาะสายอาชีพนั้น (คนที่จัดไว้แล้วไม่ถูกย้ายออก)</div>`;
+  document.getElementById('pickModal').style.display = 'flex';
+}
+function toggleSlotRules(){
+  state.slotRulesOn = !state.slotRulesOn;
+  render();
+  openSlotRules();
+  toast(state.slotRulesOn ? '🔢 เปิดล็อคลำดับตี้แล้ว' : 'ปิดล็อคลำดับตี้แล้ว');
+}
+function setSlotRule(i, v){
+  state.slotRules[i] = v;
+  render();
+}
+
 // ---------- render ----------
 function chipHTML(m, inSlot){
   const ji = jobInfo(m.job);
@@ -1570,6 +1627,7 @@ function chipHTML(m, inSlot){
 function esc(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
 function render(){
+  if(!state.slotRules) state.slotRules = ['','','','',''];
   state.parties.forEach(p => {
     if(!p.res) p.res = Array(RES_SIZE).fill(null);
     if(p.leader && !p.slots.includes(p.leader)) p.leader = null; // หัวหน้าออกจากตี้ = ปลดอัตโนมัติ
@@ -1634,7 +1692,7 @@ function render(){
             ondragleave="this.classList.remove('dragover')" ondrop="onSlotDrop(event,${p.id},${i})"
             onclick="onSlotClick(${p.id},${i})">
             <span class="num">${i+1}</span>
-            ${m ? chipHTML(m,true) : '<span class="ph">— ว่าง —</span>'}
+            ${m ? chipHTML(m,true) : `<span class="ph">— ว่าง${state.slotRulesOn && state.slotRules[i] ? ' · ล็อค ' + ruleName(state.slotRules[i]) : ''} —</span>`}
           </div>`;
         }).join('')}
       </div>
@@ -1885,6 +1943,8 @@ function serializeState(){
     colorsOn: state.colorsOn ? 1 : 0,
     colorLabels: state.colorLabels || null,
     templates: state.templates || [],
+    slotRulesOn: state.slotRulesOn ? 1 : 0,
+    slotRules: state.slotRules || ['','','','',''],
   };
 }
 function normalizeState(raw){
@@ -1908,6 +1968,8 @@ function normalizeState(raw){
     history: Object.values(raw.history || {}),
     colorsOn: raw.colorsOn === undefined ? true : !!raw.colorsOn,
     colorLabels: raw.colorLabels || null,
+    slotRulesOn: !!raw.slotRulesOn,
+    slotRules: Array.from({length:PARTY_SIZE}, (_,i) => (raw.slotRules ? Object.values(raw.slotRules)[i] : '') || ''),
     templates: Object.values(raw.templates || {}).map(t => ({
       name: t.name, date: t.date || '',
       parties: Object.values(t.parties || {}).map(p => ({
