@@ -133,7 +133,11 @@
   .addrow input{flex:1.2;} .addrow select{flex:1;}
   #searchBox{width:100%; background:rgba(14,10,26,.85); border:1px solid var(--line); color:var(--text); border-radius:4px; padding:7px 10px; font-size:13px; margin-bottom:10px; font-family:inherit;}
   #searchBox:focus{outline:none; border-color:var(--gold);}
-  .roster{display:grid; grid-template-columns:1fr 1fr; gap:6px; align-content:start; max-height:72vh; overflow-y:auto; padding-right:4px;}
+  .roster{display:grid; grid-template-columns:1fr; gap:5px; align-content:start; max-height:72vh; overflow-y:auto; padding-right:4px;}
+  #rosterList .chip{padding:6px 10px;}
+  #rosterList .chip .info{display:flex; align-items:baseline; gap:8px; min-width:0;}
+  #rosterList .chip .nm{flex-shrink:0; max-width:45%;}
+  #rosterList .chip .jb{overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1;}
   .roster::-webkit-scrollbar{width:8px;}
   .roster::-webkit-scrollbar-thumb{background:linear-gradient(180deg,var(--gold3),#2f4d7e); border-radius:4px;}
   .chip{
@@ -460,7 +464,7 @@
     <div id="histList"></div>
   </div>
 </div>
-<div style="text-align:center; font-size:10.5px; color:var(--muted); margin-top:16px; position:relative; z-index:1;" id="verTag">เวอร์ชัน 17 — เช็คชื่อแล้วทาเก็ตตี้ตัวเอง 📍</div>
+<div style="text-align:center; font-size:10.5px; color:var(--muted); margin-top:16px; position:relative; z-index:1;" id="verTag">เวอร์ชัน 18 — รายชื่อสมาชิกแบบแถวแนวนอน</div>
 <div id="toast"></div>
 
 <script>
