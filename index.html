@@ -306,6 +306,10 @@
 <header>
   <h1>จัดตี้กิลวอ</h1>
   <div class="ornament"><span class="sub">⚔ RAGNAROK · THE NEW WORLD · WAR OF EMPERIUM ⚔</span></div>
+  <div id="modeTabs" style="display:none; justify-content:center; gap:8px; margin-top:12px;">
+    <button class="btn gold" id="tabGw" onclick="switchMode('gw')">⚔️ Guild War</button>
+    <button class="btn" id="tabMw" onclick="switchMode('mw')">🌓 Monochrome War</button>
+  </div>
 </header>
 
 <div class="notice" id="noticeBar">🌐 โหมดออนไลน์ — ทุกคนที่เปิดลิงก์ห้องเดียวกันจะเห็นตี้อัปเดตแบบเรียลไทม์ กด "🔗 ก๊อปลิงก์ห้อง" แล้วส่งให้สมาชิกกิลได้เลย</div>
@@ -397,6 +401,8 @@
   <button class="btn" onclick="toggleColors()">🎨 ไฮไลท์สี</button>
   <button class="btn" onclick="saveTemplate()">📑 เซฟผังตี้</button>
   <button class="btn" onclick="openTemplates()">📚 โหลดผัง</button>
+  <button class="btn" onclick="openGroups()">🤝 ตี้ประจำ</button>
+  <button class="btn" onclick="openRegistry()">📇 ทะเบียนกิล</button>
 </div>
 
 <div class="summary" id="summaryBar"></div>
@@ -512,6 +518,7 @@ function addMember(){
     cancelEdit(); render(); return;
   }
   if(state.members.some(m => m.name === name)){ toast('⚠️ มีชื่อนี้อยู่แล้ว'); return; }
+  if(typeof curMode !== 'undefined' && curMode === 'mw' && state.members.length >= 50){ toast('⚠️ Monochrome War รับได้สูงสุด 50 คน — ตอนนี้เต็มแล้ว!'); return; }
   state.members.push({id: state.nextId++, name, job});
   nameEl.value = ''; nameEl.focus();
   render();
@@ -679,9 +686,21 @@ function autoArrange(){
   const emptyCount = () => state.parties.reduce((a,p) => a + (p.locked ? 0 : p.slots.filter(s => s === null).length), 0);
   while(emptyCount() < un.length)
     state.parties.push({id:state.nextId++, name:'ตี้ '+(state.parties.length+1), note:'', slots:Array(PARTY_SIZE).fill(null)});
+  // 🤝 วางตี้ประจำ (กลุ่มเพื่อน) ให้อยู่ตี้เดียวกันก่อน
+  const grpMap = {};
+  un.forEach(m => { if(m.grp){ (grpMap[m.grp] = grpMap[m.grp] || []).push(m); } });
+  for(const g of Object.values(grpMap)){
+    let target = state.parties.find(p => !p.locked && p.slots.filter(s => s === null).length >= g.length);
+    if(!target){
+      target = {id: state.nextId++, name: 'ตี้ ' + (state.parties.length + 1), note: '', slots: Array(PARTY_SIZE).fill(null)};
+      state.parties.push(target);
+    }
+    g.forEach(m => { const idx = target.slots.indexOf(null); if(idx !== -1) target.slots[idx] = m.id; });
+  }
+  const rest = un.filter(m => !partyOf(m.id));
   const prio = {heal:0, tank:1, support:2, dps:3};
-  un.sort((a,b) => prio[jobRole(a.job)] - prio[jobRole(b.job)]);
-  for(const m of un){
+  rest.sort((a,b) => prio[jobRole(a.job)] - prio[jobRole(b.job)]);
+  for(const m of rest){
     const role = jobRole(m.job);
     let best = null, bestKey = Infinity;
     for(const p of state.parties){
@@ -1127,6 +1146,164 @@ function deleteTemplate(i){
   openTemplates();
 }
 
+// ---------- สลับโหมด Guild War / Monochrome War ----------
+function switchMode(m){
+  if(typeof firebase === 'undefined' || !roomRef){ toast('⚠️ สลับโหมดได้เมื่อออนไลน์เท่านั้น'); return; }
+  if(m === curMode) return;
+  curMode = m;
+  roomRef.off();
+  gotFirstSnapshot = false; lastSentJSON = ''; histStack = []; lastRenderJSON = null; undoing = false;
+  selectedMemberId = null; editingId = null; announceText = '';
+  state = {members:[], parties:[], nextId:1, history:[], colorsOn:true, colorLabels:null, templates:[]};
+  state.parties.push({id:state.nextId++, name:'ตี้ 1', note:'', slots:Array(PARTY_SIZE).fill(null)});
+  state.parties.push({id:state.nextId++, name:'ตี้ 2', note:'', slots:Array(PARTY_SIZE).fill(null)});
+  applyingRemote = true; render(); applyingRemote = false;
+  showAnnounce();
+  updateModeUI();
+  bindRoom();
+  toast(m === 'mw' ? '🌓 สลับไป Monochrome War (รับ 50 คน)' : '⚔️ กลับสู่ Guild War');
+}
+function updateModeUI(){
+  const g = document.getElementById('tabGw'), w = document.getElementById('tabMw');
+  if(!g || !w) return;
+  g.classList.toggle('gold', typeof curMode === 'undefined' || curMode === 'gw');
+  w.classList.toggle('gold', typeof curMode !== 'undefined' && curMode === 'mw');
+}
+
+// ---------- ทะเบียนรายชื่อประจำ (คลังชื่อถาวร ใช้ร่วมกันทุกโหมด) ----------
+let registryCache = [];
+function regPath(){ return 'rooms/' + roomId + '__registry'; }
+function regKey(name){ return name.replace(/[.#$/\[\]]/g, '_'); }
+function openRegistry(){
+  if(typeof isAdmin !== 'undefined' && !isAdmin){ toast('👑 เฉพาะหัวกิลเท่านั้น'); return; }
+  if(!_db || !roomId){ toast('⚠️ ทะเบียนใช้ได้เมื่อออนไลน์เท่านั้น'); return; }
+  _db.ref(regPath()).once('value').then(snap => {
+    const reg = snap.val() || {};
+    registryCache = Object.keys(reg).map(k => ({
+      key: k,
+      name: (reg[k] && reg[k].name) || k,
+      job: (reg[k] && reg[k].job) || 'อื่น ๆ',
+    })).sort((a,b) => a.name.localeCompare(b.name, 'th'));
+    regRender();
+    document.getElementById('pickModal').style.display = 'flex';
+  }).catch(() => toast('❌ โหลดทะเบียนไม่สำเร็จ'));
+}
+function regRender(){
+  const notIn = registryCache.filter(r => !state.members.some(m => m.name === r.name));
+  document.getElementById('pickTitle').innerHTML = '📇 ทะเบียนรายชื่อประจำ (' + registryCache.length + ' คน)';
+  document.getElementById('pickBody').innerHTML =
+    `<button class="btn pickbtn" style="grid-column:1/-1;" onclick="regSaveCurrent()">💾 เก็บรายชื่อกระดานนี้เข้าทะเบียน (${state.members.length} คน)</button>` +
+    (registryCache.length ? `<button class="btn pickbtn gold" style="grid-column:1/-1;" onclick="regAddAll()">➕ ดึงทุกคนที่ยังไม่อยู่ ลงกระดานนี้ (${notIn.length} คน)</button>` : '') +
+    (registryCache.length ? registryCache.map((r,i) => {
+      const inBoard = state.members.some(m => m.name === r.name);
+      return `<button class="btn pickbtn" style="${inBoard ? 'opacity:.5;' : ''} display:flex; justify-content:space-between; align-items:center;" onclick="regAddOne(${i})"><span style="overflow:hidden; text-overflow:ellipsis;">${inBoard ? '✓' : '➕'} ${esc(r.name)} <span style="opacity:.65; font-size:11px;">${esc(r.job.split(' (')[0])}</span></span><span style="opacity:.75; flex-shrink:0;" onclick="event.stopPropagation();regDel(${i})" title="ลบออกจากทะเบียนถาวร">🗑</span></button>`;
+    }).join('') : '<div style="color:var(--muted); font-style:italic; grid-column:1/-1; text-align:center; padding:12px;">ทะเบียนยังว่าง — กดปุ่ม 💾 ด้านบนเพื่อเก็บรายชื่อจากกระดานปัจจุบันเข้าทะเบียน</div>');
+}
+function regAddOne(i){
+  const r = registryCache[i];
+  if(!r) return;
+  if(state.members.some(m => m.name === r.name)){ toast('"' + r.name + '" อยู่ในกระดานนี้แล้ว'); return; }
+  if(typeof curMode !== 'undefined' && curMode === 'mw' && state.members.length >= 50){ toast('⚠️ Monochrome War เต็ม 50 คนแล้ว'); return; }
+  state.members.push({id: state.nextId++, name: r.name, job: r.job});
+  render();
+  regRender();
+}
+function regAddAll(){
+  let added = 0, full = false;
+  for(const r of registryCache){
+    if(state.members.some(m => m.name === r.name)) continue;
+    if(typeof curMode !== 'undefined' && curMode === 'mw' && state.members.length >= 50){ full = true; break; }
+    state.members.push({id: state.nextId++, name: r.name, job: r.job});
+    added++;
+  }
+  render();
+  regRender();
+  toast('➕ ดึงจากทะเบียนมา ' + added + ' คน' + (full ? ' (หยุดเพราะครบ 50)' : ''));
+}
+function regSaveCurrent(){
+  if(!state.members.length){ toast('กระดานนี้ยังไม่มีรายชื่อให้เก็บ'); return; }
+  _db.ref(regPath()).once('value').then(snap => {
+    const reg = snap.val() || {};
+    let added = 0;
+    state.members.forEach(m => {
+      const k = regKey(m.name);
+      if(reg[k] === undefined) added++;
+      reg[k] = {name: m.name, job: m.job};
+    });
+    return _db.ref(regPath()).set(reg).then(() => {
+      toast('💾 เก็บเข้าทะเบียนแล้ว — เพิ่มใหม่ ' + added + ' · รวม ' + Object.keys(reg).length + ' คน');
+      openRegistry();
+    });
+  }).catch(() => toast('❌ บันทึกทะเบียนไม่สำเร็จ'));
+}
+function regDel(i){
+  const r = registryCache[i];
+  if(!r || !window.confirm('ลบ "' + r.name + '" ออกจากทะเบียนถาวร?\n(ไม่กระทบรายชื่อบนกระดาน)')) return;
+  _db.ref(regPath() + '/' + r.key).remove()
+    .then(() => { toast('🗑 ลบออกจากทะเบียนแล้ว'); openRegistry(); })
+    .catch(() => toast('❌ ลบไม่สำเร็จ'));
+}
+
+// ---------- ตี้ประจำ (กลุ่มเพื่อนที่ต้องอยู่ด้วยกัน) ----------
+let grpEditing = null, grpNamesCache = [];
+function openGroups(){
+  if(typeof isAdmin !== 'undefined' && !isAdmin){ toast('👑 เฉพาะหัวกิลเท่านั้น'); return; }
+  grpEditing = null;
+  grpRender();
+  document.getElementById('pickModal').style.display = 'flex';
+}
+function grpRender(){
+  const groups = {};
+  state.members.forEach(m => { if(m.grp){ (groups[m.grp] = groups[m.grp] || []).push(m); } });
+  grpNamesCache = Object.keys(groups).sort((a,b) => a.localeCompare(b,'th'));
+  const body = document.getElementById('pickBody');
+  if(grpEditing === null){
+    document.getElementById('pickTitle').innerHTML = '🤝 ตี้ประจำ — กลุ่มที่ต้องอยู่ตี้เดียวกันเสมอ';
+    body.innerHTML = `<button class="btn pickbtn gold" style="grid-column:1/-1;" onclick="grpNew()">➕ สร้างกลุ่มใหม่</button>` +
+      (grpNamesCache.length ? grpNamesCache.map((n,i) =>
+        `<button class="btn pickbtn" style="grid-column:1/-1;" onclick="grpEdit(${i})">🤝 <b>${esc(n)}</b> (${groups[n].length}/${PARTY_SIZE}) — ${groups[n].map(m => esc(m.name)).join(', ')}</button>`
+      ).join('') : '<div style="color:var(--muted); font-style:italic; grid-column:1/-1; text-align:center; padding:12px;">ยังไม่มีกลุ่ม — กดสร้างกลุ่ม แล้วเลือกสมาชิกที่ต้องอยู่ด้วยกัน<br>เวลากด 🎲 จัดตี้อัตโนมัติ คนกลุ่มเดียวกันจะถูกจัดลงตี้เดียวกันเสมอ</div>');
+  } else {
+    document.getElementById('pickTitle').innerHTML = '🤝 เลือกสมาชิกกลุ่ม "' + esc(grpEditing) + '" (แตะชื่อเพื่อเพิ่ม/เอาออก)';
+    const inCount = state.members.filter(m => m.grp === grpEditing).length;
+    body.innerHTML =
+      `<button class="btn pickbtn" style="grid-column:1/-1;" onclick="grpEditing=null;grpRender()">⬅ กลับหน้ารวมกลุ่ม (ตอนนี้ ${inCount}/${PARTY_SIZE} คน)</button>` +
+      state.members.map(m => {
+        const mine = m.grp === grpEditing;
+        const other = m.grp && !mine;
+        return `<button class="btn pickbtn${mine ? ' gold' : ''}" ${other ? 'style="opacity:.45;"' : ''} onclick="grpToggle(${m.id})">${mine ? '✓ ' : ''}${esc(m.name)} <span style="opacity:.65; font-size:11px;">${esc(m.job.split(' (')[0])}${other ? ' · อยู่กลุ่ม ' + esc(m.grp) : ''}</span></button>`;
+      }).join('') +
+      `<button class="btn pickbtn" style="grid-column:1/-1; border-color:var(--red); color:#ff9d9d;" onclick="grpDissolve()">🗑 ยุบกลุ่มนี้</button>`;
+  }
+}
+function grpNew(){
+  const n = window.prompt('ตั้งชื่อกลุ่ม เช่น "แก๊งเพื่อน 5 คน"');
+  if(!n || !n.trim()) return;
+  grpEditing = n.trim();
+  grpRender();
+}
+function grpEdit(i){ grpEditing = grpNamesCache[i]; grpRender(); }
+function grpToggle(id){
+  const m = memberById(id);
+  if(!m) return;
+  if(m.grp === grpEditing){ m.grp = ''; }
+  else {
+    if(m.grp){ toast('"' + m.name + '" อยู่กลุ่ม "' + m.grp + '" อยู่แล้ว — เอาออกจากกลุ่มเดิมก่อน'); return; }
+    if(state.members.filter(x => x.grp === grpEditing).length >= PARTY_SIZE){ toast('กลุ่มเดียวกันอยู่ได้สูงสุด ' + PARTY_SIZE + ' คน (เท่าขนาดตี้)'); return; }
+    m.grp = grpEditing;
+  }
+  render();
+  grpRender();
+}
+function grpDissolve(){
+  if(!window.confirm('ยุบกลุ่ม "' + grpEditing + '" ? (สมาชิกยังอยู่ครบ แค่ไม่ผูกกันแล้ว)')) return;
+  state.members.forEach(m => { if(m.grp === grpEditing) m.grp = ''; });
+  grpEditing = null;
+  render();
+  grpRender();
+  toast('ยุบกลุ่มแล้ว');
+}
+
 // ---------- render ----------
 function chipHTML(m, inSlot){
   const ji = jobInfo(m.job);
@@ -1144,7 +1321,7 @@ function chipHTML(m, inSlot){
   return `<div class="chip${sel}${asg}${attCls}" style="--jc:${ji.color};border-left-color:${ji.color}" draggable="${isAdmin}"
     ondragstart="onDragStart(event,${m.id})" onclick="onChipClick(${m.id})">
     ${iconHTML(ji)}
-    <span class="info"><span class="nm">${esc(m.name)}</span><span class="jb">${esc(m.job)}</span></span>
+    <span class="info"><span class="nm">${esc(m.name)}</span><span class="jb">${esc(m.job)}${m.grp ? ' · 🤝' + esc(m.grp) : ''}</span></span>
     ${tag}${attBtn}${editBtn}${delBtn}</div>`;
 }
 function esc(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
@@ -1186,7 +1363,8 @@ function render(){
     list.length ? list.map(m => chipHTML(m,false)).join('')
     : `<div style="color:#5d5480;font-size:13px;text-align:center;padding:14px 0;font-style:italic">${state.members.length? 'ไม่พบที่ค้นหา' : 'ยังไม่มีสมาชิก — เพิ่มชื่อด้านบนได้เลย'}</div>`;
   const assignedCount = state.members.filter(m => partyOf(m.id)).length;
-  document.getElementById('rosterCount').textContent = `ทั้งหมด ${state.members.length} คน · ลงตี้แล้ว ${assignedCount}`;
+  const _cap = (typeof curMode !== 'undefined' && curMode === 'mw') ? '/50' : '';
+  document.getElementById('rosterCount').textContent = `ทั้งหมด ${state.members.length}${_cap} คน · ลงตี้แล้ว ${assignedCount}`;
 
   // จำช่องที่กำลังพิมพ์อยู่ (กันข้อความหายตอนหน้าอัปเดตสด)
   let focusInfo = null;
@@ -1271,7 +1449,8 @@ function buildDiscordText(){
   const title = document.getElementById('eventTitle').value.trim();
   const time  = document.getElementById('eventTime').value.trim();
   const parts = [];
-  parts.push(`⚔️🏰 __**จัดตี้กิลวอ${title ? ' — '+title : ''}**__ 🏰⚔️`);
+  const modeName = (typeof curMode !== 'undefined' && curMode === 'mw') ? 'Monochrome War' : 'จัดตี้กิลวอ';
+  parts.push(`⚔️🏰 __**${modeName}${title ? ' — '+title : ''}**__ 🏰⚔️`);
   if(time) parts.push(`🗓️ นัดหมาย: **${time}**`);
   parts.push('');
   state.parties.forEach((p,i) => { parts.push(partyText(p,i)); parts.push(''); });
@@ -1441,7 +1620,7 @@ function randRoomId(){
 // Firebase ตัดค่า null/array ว่างทิ้ง — แปลงไป-กลับให้โครงสร้างครบเสมอ
 function serializeState(){
   return {
-    members: state.members.map(m => ({id:m.id, name:m.name, job:m.job, att:m.att || ''})),
+    members: state.members.map(m => ({id:m.id, name:m.name, job:m.job, att:m.att || '', grp:m.grp || ''})),
     parties: state.parties.map(p => ({id:p.id, name:p.name, note:p.note||'', locked:p.locked ? 1 : 0, color:p.color || '', slots:p.slots.map(s => s === null ? -1 : s)})),
     nextId: state.nextId,
     history: state.history || [],
@@ -1510,6 +1689,9 @@ function setMode(){
   document.body.classList.toggle('member', online && !isAdmin);
   const et = document.getElementById('eventTitle'), em = document.getElementById('eventTime');
   et.readOnly = em.readOnly = online && !isAdmin;
+  const mt = document.getElementById('modeTabs');
+  if(mt) mt.style.display = online ? 'flex' : 'none';
+  updateModeUI();
   const nb = document.getElementById('noticeBar');
   if(online && !isAdmin){
     nb.innerHTML = '🙋 <b>โหมดสมาชิก</b> — พิมพ์ชื่อตัวละคร + เลือกอาชีพ แล้วกด "เพิ่มสมาชิก" ได้เลย เดี๋ยวหัวกิลจัดตี้ให้ หน้านี้อัปเดตสดอัตโนมัติ';
@@ -1537,17 +1719,27 @@ function initOnline(){
   } else {
     isAdmin = false; // รอเช็ครหัสกับห้องก่อน
   }
-  roomRef = db.ref('rooms/' + room);
   roomId = room;
+  urlKeyG = urlKey;
+  _db = db;
+  db.ref('.info/connected').on('value', s => setStatus(s.val() ? 'online' : 'connecting'));
+  bindRoom();
+}
+let _db = null, urlKeyG = '', curMode = 'gw';
+function roomPath(){ return 'rooms/' + roomId + (curMode === 'mw' ? '__mw' : ''); }
+function bindRoom(){
+  roomRef = _db.ref(roomPath());
   setStatus('connecting');
   roomRef.on('value', snap => {
     const data = snap.val();
     gotFirstSnapshot = true;
     if(!data || !data.state){
-      // ห้องว่าง — คนแรกที่เปิด (คนสร้างห้อง) ได้สิทธิ์หัวกิล
-      if(!adminKey) adminKey = urlKey || randRoomId();
-      isAdmin = true;
-      history.replaceState(null, '', '#'+room+'~'+adminKey);
+      if(curMode === 'gw'){
+        // ห้องว่าง — คนแรกที่เปิด (คนสร้างห้อง) ได้สิทธิ์หัวกิล
+        if(!adminKey) adminKey = urlKeyG || randRoomId();
+        isAdmin = true;
+        history.replaceState(null, '', '#'+roomId+'~'+adminKey);
+      } // โหมดกิจกรรม: ใช้สิทธิ์เดิมจาก Guild War
       setMode();
       applyingRemote = true; render(); applyingRemote = false;
       scheduleSave();
@@ -1556,13 +1748,13 @@ function initOnline(){
     const wasAdmin = isAdmin;
     if(data.adminKey){
       adminKey = data.adminKey;
-      isAdmin = (urlKey === adminKey);
-      if(isAdmin) history.replaceState(null, '', '#'+room+'~'+adminKey);
-    } else {
+      isAdmin = (urlKeyG === adminKey);
+      if(isAdmin && curMode === 'gw') history.replaceState(null, '', '#'+roomId+'~'+adminKey);
+    } else if(curMode === 'gw'){
       // ห้องรุ่นเก่าที่ยังไม่มีรหัสหัวกิล — คนที่เปิดอยู่ตอนนี้รับสิทธิ์ไป
-      adminKey = urlKey || randRoomId();
+      adminKey = urlKeyG || randRoomId();
       isAdmin = true;
-      history.replaceState(null, '', '#'+room+'~'+adminKey);
+      history.replaceState(null, '', '#'+roomId+'~'+adminKey);
       scheduleSave();
     }
     setMode();
@@ -1586,7 +1778,6 @@ function initOnline(){
     render();
     applyingRemote = false;
   }, () => { setStatus('offline'); toast('⚠️ เชื่อมต่อฐานข้อมูลไม่ได้'); });
-  db.ref('.info/connected').on('value', s => setStatus(s.val() ? 'online' : 'connecting'));
 }
 
 // ประกายไฟลอย (ember particles)
