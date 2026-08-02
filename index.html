@@ -179,7 +179,12 @@
   .dcard .dname{color:var(--gold2); font-weight:700; display:flex; justify-content:space-between; gap:6px; margin-bottom:2px;}
   .dcard .dname > span:first-child{color:#fff; animation:nameglow 3.2s ease-in-out infinite;}
   .dntext{overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0;}
-  .dhandle{color:var(--muted); margin-left:auto; cursor:grab; font-size:14px; padding:0 3px; flex-shrink:0;}
+  .dhandle{color:var(--muted); margin-left:auto; cursor:pointer; font-size:14px; padding:0 4px; flex-shrink:0; border-radius:3px;}
+  .dhandle:hover{background:rgba(255,255,255,.15); color:#fff;}
+  .dmemb{cursor:pointer; border-bottom:1px dotted rgba(255,255,255,.4); padding:0 3px; border-radius:3px; white-space:nowrap; display:inline-block; margin:1px 0;}
+  .dmemb:hover{background:rgba(255,255,255,.18);}
+  body.member .dmemb{cursor:default; border-bottom:none;}
+  body.member .dmemb:hover{background:none;}
   .dnedit{background:transparent; border:none; border-bottom:1px dashed transparent; color:#fff; font-weight:700; font-family:inherit; font-size:12.5px; min-width:0; flex:1; padding:0 2px;}
   .dnedit:focus{outline:none; border-bottom-color:var(--pink); background:rgba(255,143,199,.08);}
   body.member .dnedit{pointer-events:none;}
@@ -905,16 +910,17 @@ function renderDigest(){
   if(dae && dae.classList && dae.classList.contains('dnedit')){
     fi = {pid: dae.dataset.pid, value: dae.value, ss: dae.selectionStart, se: dae.selectionEnd};
   }
+  const admX = (typeof isAdmin === 'undefined' || isAdmin);
   body.innerHTML = state.parties.map(p => {
     const mems = p.slots.filter(s => s !== null).map(id => {
       const m = memberById(id); if(!m) return '';
-      return `${jobInfo(m.job).emoji} ${esc(m.name)}`;
+      return `<span class="dmemb"${admX ? ` onclick="event.stopPropagation();openPicker(${m.id})" title="กดเพื่อย้ายตี้ / เอาออก"` : ''}>${jobInfo(m.job).emoji} ${esc(m.name)}</span>`;
     }).filter(Boolean);
     const free = PARTY_SIZE - mems.length;
     return `<div class="dcard${state.colorsOn && p.color ? ' c-'+p.color : ''}" draggable="true" ondragstart="dgDragStart(event,${p.id})" ondragover="event.preventDefault();this.classList.add('dragover')" ondragleave="this.classList.remove('dragover')" ondrop="dgDrop(event,${p.id})">
-      <div class="dname"><span style="display:flex;align-items:center;gap:3px;flex:1;min-width:0;">${p.locked ? '🔒 ' : ''}🚩 <span class="dntext" data-pid="${p.id}">${esc(p.name)}</span>${(typeof isAdmin === 'undefined' || isAdmin) ? `<button class="att" title="แก้ชื่อตี้" style="font-size:11px;" onmousedown="event.stopPropagation()" onclick="event.stopPropagation();dnEdit(${p.id},this)">✏️</button><span class="dhandle" title="ลากการ์ดเพื่อย้ายตำแหน่งตี้">⠿</span>` : ''}</span><span style="font-weight:400;color:var(--muted)">${mems.length}/${PARTY_SIZE}</span></div>
+      <div class="dname"><span style="display:flex;align-items:center;gap:3px;flex:1;min-width:0;">${p.locked ? '🔒 ' : ''}🚩 <span class="dntext" data-pid="${p.id}">${esc(p.name)}</span>${(typeof isAdmin === 'undefined' || isAdmin) ? `<button class="att" title="แก้ชื่อตี้" style="font-size:11px;" onmousedown="event.stopPropagation()" onclick="event.stopPropagation();dnEdit(${p.id},this)">✏️</button><span class="dhandle" title="ลากการ์ดเพื่อสลับตำแหน่ง หรือกดเพื่อเลือกตำแหน่งตี้" onclick="event.stopPropagation();openMoveParty(${p.id})">⠿</span>` : ''}</span><span style="font-weight:400;color:var(--muted)">${mems.length}/${PARTY_SIZE}</span></div>
       ${p.note ? `<div class="dnote">📌 ${esc(p.note)}</div>` : ''}
-      <div class="dmem">${mems.length ? mems.join(' · ') : '<span class="dfree">— ยังว่างทั้งตี้ —</span>'}</div>
+      <div class="dmem">${mems.length ? mems.join(' ') : '<span class="dfree">— ยังว่างทั้งตี้ —</span>'}</div>
       ${free > 0 && mems.length ? `<div class="dfree">เหลือว่าง ${free} ที่</div>` : ''}
     </div>`;
   }).join('');
