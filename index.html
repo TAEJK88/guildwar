@@ -181,7 +181,7 @@
   .dntext{overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0;}
   .dhandle{color:var(--muted); margin-left:auto; cursor:pointer; font-size:14px; padding:0 4px; flex-shrink:0; border-radius:3px;}
   .dhandle:hover{background:rgba(255,255,255,.15); color:#fff;}
-  .dmemb{cursor:pointer; border-bottom:1px dotted rgba(255,255,255,.4); padding:0 3px; border-radius:3px; white-space:nowrap; display:inline-block; margin:1px 0;}
+  .dmemb{cursor:pointer; border-bottom:1px dotted rgba(255,255,255,.25); padding:1px 4px; border-radius:3px; display:block; margin:2px 0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:left;}
   .dmemb:hover{background:rgba(255,255,255,.18);}
   body.member .dmemb{cursor:default; border-bottom:none;}
   body.member .dmemb:hover{background:none;}
@@ -266,6 +266,9 @@
   .comp span{background:rgba(255,255,255,.06); border:1px solid var(--line); border-radius:3px; padding:1px 7px; color:var(--muted);}
   .comp span.warn{color:#ffb3b3; border-color:rgba(224,85,85,.55); background:rgba(224,85,85,.12);}
   .slots{display:flex; flex-direction:column; gap:6px;}
+  .resbox{display:flex; gap:6px; margin-top:8px; align-items:center;}
+  .resbox .rlabel{font-size:11px; color:#e8c05a; white-space:nowrap; font-weight:700;}
+  .resslot{flex:1; min-height:38px; border-color:rgba(232,192,90,.45) !important;}
   .slot{
     min-height:42px; border:1px dashed #3b5c8c; border-radius:4px;
     display:flex; align-items:center; padding:3px 6px; gap:6px; transition:.15s;
@@ -488,6 +491,7 @@ function iconHTML(ji){
     svgSpan(false)+`</span>`;
 }
 const PARTY_SIZE = 5;
+const RES_SIZE = 2; // ตัวสำรองต่อตี้
 
 let state = {
   members: [],   // {id, name, job}
@@ -506,14 +510,16 @@ const jobInfo = j => JOBS.find(x => x.name === j) || JOBS[JOBS.length-1];
 const memberById = id => state.members.find(m => m.id === id);
 function partyOf(memberId){
   for(const p of state.parties){
-    const i = p.slots.indexOf(memberId);
-    if(i !== -1) return {party:p, slotIndex:i};
+    let i = p.slots.indexOf(memberId);
+    if(i !== -1) return {party:p, slotIndex:i, res:false};
+    i = (p.res || []).indexOf(memberId);
+    if(i !== -1) return {party:p, slotIndex:i, res:true};
   }
   return null;
 }
 function removeFromParty(memberId){
   const loc = partyOf(memberId);
-  if(loc) loc.party.slots[loc.slotIndex] = null;
+  if(loc) (loc.res ? loc.party.res : loc.party.slots)[loc.slotIndex] = null;
 }
 function toast(msg){
   const t = document.getElementById('toast');
@@ -590,6 +596,7 @@ function clearParty(pid){
   if(p){
     if(p.locked){ toast(LOCK_MSG); return; }
     p.slots = Array(PARTY_SIZE).fill(null);
+    p.res = Array(RES_SIZE).fill(null);
   }
   render();
 }
@@ -606,7 +613,7 @@ function assignToSlot(memberId, partyId, slotIndex){
   removeFromParty(memberId);
   if(occupant !== null){
     // swap: occupant goes where dragged member came from (or back to roster)
-    if(prevLoc) prevLoc.party.slots[prevLoc.slotIndex] = occupant;
+    if(prevLoc) (prevLoc.res ? prevLoc.party.res : prevLoc.party.slots)[prevLoc.slotIndex] = occupant;
     else removeFromParty(occupant); // just unassign occupant is wrong; set below
     if(!prevLoc){
       // dragged from roster -> occupant returns to roster
@@ -741,7 +748,7 @@ function clearAllParties(){
   if(!isAdmin){ toast(ADMIN_MSG); return; }
   if(!state.parties.some(p => p.slots.some(s => s !== null))){ toast('ตี้ว่างอยู่แล้ว'); return; }
   if(!window.confirm('เอาสมาชิกออกจากทุกตี้ใช่ไหม? (รายชื่อสมาชิกไม่หาย)')) return;
-  state.parties.forEach(p => { if(!p.locked) p.slots = Array(PARTY_SIZE).fill(null); });
+  state.parties.forEach(p => { if(!p.locked){ p.slots = Array(PARTY_SIZE).fill(null); p.res = Array(RES_SIZE).fill(null); } });
   render();
 }
 
@@ -912,15 +919,20 @@ function renderDigest(){
   }
   const admX = (typeof isAdmin === 'undefined' || isAdmin);
   body.innerHTML = state.parties.map(p => {
-    const mems = p.slots.filter(s => s !== null).map(id => {
+    const mems = p.slots.filter(s => s !== null).map((id, mi) => {
       const m = memberById(id); if(!m) return '';
-      return `<span class="dmemb"${admX ? ` onclick="event.stopPropagation();openPicker(${m.id})" title="กดเพื่อย้ายตี้ / เอาออก"` : ''}>${jobInfo(m.job).emoji} ${esc(m.name)}</span>`;
+      return `<span class="dmemb"${admX ? ` onclick="event.stopPropagation();openPicker(${m.id})" title="กดเพื่อย้ายตี้ / เอาออก"` : ''}><span style="opacity:.6; display:inline-block; width:14px;">${mi+1}.</span> ${jobInfo(m.job).emoji} ${esc(m.name)}</span>`;
+    }).filter(Boolean);
+    const resMems = (p.res || []).filter(s => s !== null).map(id => {
+      const m = memberById(id); if(!m) return '';
+      return `<span class="dmemb"${admX ? ` onclick="event.stopPropagation();openPicker(${m.id})" title="กดเพื่อดันขึ้นตัวจริง / ย้าย"` : ''}>🪑 ${esc(m.name)}</span>`;
     }).filter(Boolean);
     const free = PARTY_SIZE - mems.length;
     return `<div class="dcard${state.colorsOn && p.color ? ' c-'+p.color : ''}" draggable="true" ondragstart="dgDragStart(event,${p.id})" ondragover="event.preventDefault();this.classList.add('dragover')" ondragleave="this.classList.remove('dragover')" ondrop="dgDrop(event,${p.id})">
       <div class="dname"><span style="display:flex;align-items:center;gap:3px;flex:1;min-width:0;">${p.locked ? '🔒 ' : ''}🚩 <span class="dntext" data-pid="${p.id}">${esc(p.name)}</span>${(typeof isAdmin === 'undefined' || isAdmin) ? `<button class="att" title="แก้ชื่อตี้" style="font-size:11px;" onmousedown="event.stopPropagation()" onclick="event.stopPropagation();dnEdit(${p.id},this)">✏️</button><span class="dhandle" title="ลากการ์ดเพื่อสลับตำแหน่ง หรือกดเพื่อเลือกตำแหน่งตี้" onclick="event.stopPropagation();openMoveParty(${p.id})">⠿</span>` : ''}</span><span style="font-weight:400;color:var(--muted)">${mems.length}/${PARTY_SIZE}</span></div>
       ${p.note ? `<div class="dnote">📌 ${esc(p.note)}</div>` : ''}
-      <div class="dmem">${mems.length ? mems.join(' ') : '<span class="dfree">— ยังว่างทั้งตี้ —</span>'}</div>
+      <div class="dmem">${mems.length ? mems.join('') : '<span class="dfree">— ยังว่างทั้งตี้ —</span>'}</div>
+      ${resMems.length ? `<div class="dmem" style="opacity:.92; margin-top:2px; border-top:1px dashed rgba(255,255,255,.2); padding-top:2px;">${resMems.join('')}</div>` : ''}
       ${free > 0 && mems.length ? `<div class="dfree">เหลือว่าง ${free} ที่</div>` : ''}
     </div>`;
   }).join('');
@@ -950,9 +962,16 @@ function openPicker(id){
   body.innerHTML = state.parties.map(p => {
     const filled = p.slots.filter(s => s !== null).length;
     const full = filled >= PARTY_SIZE;
-    const cur = loc && loc.party.id === p.id;
-    const dis = (full || p.locked) && !cur;
-    return `<button class="btn pickbtn${cur ? ' gold' : ''}"${dis ? ' disabled style="opacity:.35;cursor:not-allowed"' : ''} onclick="pickParty(${p.id})">${p.locked ? '🔒 ' : ''}🚩 ${esc(p.name)} <span style="opacity:.75">(${filled}/${PARTY_SIZE})</span>${cur ? ' — อยู่ตี้นี้' : ''}${p.note ? `<div style="font-size:11px;opacity:.75;font-weight:400;">📌 ${esc(p.note)}</div>` : ''}</button>`;
+    const resArr = p.res || [];
+    const resFilled = resArr.filter(s => s !== null).length;
+    const cur = loc && loc.party.id === p.id && !loc.res;
+    const resCur = loc && loc.party.id === p.id && loc.res;
+    const disMain = p.locked || (full && !cur);
+    const disRes = p.locked || (resFilled >= RES_SIZE) || resCur;
+    return `<div style="display:flex; gap:4px;">
+      <button class="btn pickbtn${cur ? ' gold' : ''}" style="flex:1;${disMain ? 'opacity:.35;cursor:not-allowed;' : ''}"${disMain ? ' disabled' : ''} onclick="pickParty(${p.id})">${p.locked ? '🔒 ' : ''}🚩 ${esc(p.name)} <span style="opacity:.75">(${filled}/${PARTY_SIZE})</span>${cur ? ' — อยู่ตี้นี้' : ''}${resCur ? ' — ⬆ ดันขึ้นตัวจริง' : ''}${p.note ? `<div style="font-size:11px;opacity:.75;font-weight:400;">📌 ${esc(p.note)}</div>` : ''}</button>
+      <button class="btn pickbtn" style="flex:0 0 auto; width:auto;${disRes ? 'opacity:.35;cursor:not-allowed;' : ''}"${disRes ? ' disabled' : ''} onclick="pickRes(${p.id})" title="ลงเป็นตัวสำรองตี้นี้">🪑${resFilled}/${RES_SIZE}</button>
+    </div>`;
   }).join('') + (loc ? `<button class="btn pickbtn" style="border-color:var(--red); color:#ff9d9d;" onclick="pickRemove()">✕ เอาออกจากตี้</button>` : '');
   document.getElementById('pickModal').style.display = 'flex';
 }
@@ -963,7 +982,7 @@ function pickParty(pid){
   if(!p) return;
   if(p.locked){ toast(LOCK_MSG); return; }
   const loc = partyOf(pickId);
-  if(loc && loc.party.id === pid){ closePicker(); return; }
+  if(loc && loc.party.id === pid && !loc.res){ closePicker(); return; }
   const idx = p.slots.indexOf(null);
   if(idx === -1){ toast('ตี้นี้เต็มแล้ว'); return; }
   const nm = memberById(pickId).name;
@@ -1392,13 +1411,51 @@ function toggleAdminPanel(){
   t.textContent = hidden ? '▾ ซ่อน' : '▸ แสดง';
 }
 
+// ---------- ตัวสำรองประจำตี้ ----------
+function onResDrop(ev, partyId, resIndex){
+  ev.preventDefault();
+  ev.currentTarget.classList.remove('dragover');
+  const id = parseInt(ev.dataTransfer.getData('text/plain'), 10);
+  if(!isNaN(id)) assignToRes(id, partyId, resIndex);
+}
+function assignToRes(memberId, partyId, resIndex){
+  if(typeof isAdmin !== 'undefined' && !isAdmin){ toast(ADMIN_MSG); return; }
+  const p = state.parties.find(x => x.id === partyId);
+  if(!p) return;
+  if(p.locked){ toast(LOCK_MSG); return; }
+  if(!p.res) p.res = Array(RES_SIZE).fill(null);
+  const prevLoc = partyOf(memberId);
+  if(prevLoc && prevLoc.party.locked){ toast(LOCK_MSG); return; }
+  const occupant = p.res[resIndex];
+  if(occupant === memberId) return;
+  removeFromParty(memberId);
+  if(occupant !== null && prevLoc){
+    (prevLoc.res ? prevLoc.party.res : prevLoc.party.slots)[prevLoc.slotIndex] = occupant;
+  }
+  p.res[resIndex] = memberId;
+  render();
+}
+function pickRes(pid){
+  if(pickId === null) return;
+  const p = state.parties.find(x => x.id === pid);
+  if(!p) return;
+  if(p.locked){ toast(LOCK_MSG); return; }
+  if(!p.res) p.res = Array(RES_SIZE).fill(null);
+  const idx = p.res.indexOf(null);
+  if(idx === -1){ toast('🪑 สำรองตี้นี้เต็มแล้ว (' + RES_SIZE + ' ที่)'); return; }
+  const nm = memberById(pickId).name;
+  assignToRes(pickId, pid, idx);
+  closePicker();
+  toast('🪑 ลง ' + nm + ' เป็นตัวสำรอง ' + p.name + ' แล้ว');
+}
+
 // ---------- render ----------
 function chipHTML(m, inSlot){
   const ji = jobInfo(m.job);
   const loc = partyOf(m.id);
   const sel = selectedMemberId === m.id ? ' selected' : '';
   const asg = (!inSlot && loc) ? ' assigned' : '';
-  const tag = (!inSlot && loc) ? `<span class="tag">${esc(loc.party.name)}</span>` : '';
+  const tag = (!inSlot && loc) ? `<span class="tag">${loc.res ? '🪑 ' : ''}${esc(loc.party.name)}</span>` : '';
   const attIcon = m.att === 'yes' ? '✅' : m.att === 'no' ? '❌' : '❓';
   const attCls = (m.att === 'no' ? ' att-no' : '') + (myNameCur && m.name === myNameCur ? ' me' : '');
   const attBtn = inSlot ? '' : `<button class="att" title="เช็คชื่อ มา/ไม่มา (กดสลับ)" onclick="event.stopPropagation();toggleAtt(${m.id})">${attIcon}</button>`;
@@ -1415,6 +1472,7 @@ function chipHTML(m, inSlot){
 function esc(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
 function render(){
+  state.parties.forEach(p => { if(!p.res) p.res = Array(RES_SIZE).fill(null); });
   const _dl = {red:'กันกลาง', blue:'กันบน', orange:'กันล่าง', green:'บ้านลอง', purple:'ตี้สลับ', yellow:'ชาวต่างชาติ'};
   if(!state.colorLabels) state.colorLabels = _dl;
   else for(const k in _dl){ if(state.colorLabels[k] === undefined) state.colorLabels[k] = _dl[k]; }
@@ -1479,6 +1537,10 @@ function render(){
           </div>`;
         }).join('')}
       </div>
+      <div class="resbox"><span class="rlabel">🪑 สำรอง</span>${(p.res || []).map((mid,i) => {
+        const m = mid !== null ? memberById(mid) : null;
+        return `<div class="slot resslot ${m ? '' : 'empty-click'}" ondragover="event.preventDefault();this.classList.add('dragover')" ondragleave="this.classList.remove('dragover')" ondrop="onResDrop(event,${p.id},${i})">${m ? chipHTML(m,true) : '<span class="ph">— ว่าง —</span>'}</div>`;
+      }).join('')}</div>
       ${compHTML(p)}
       <div class="pfoot">
         <button class="btn small" onclick="cycleColor(${p.id})" title="เปลี่ยนสีตี้ (กดวนสี)">${p.color && COLOR_META[p.color] ? COLOR_META[p.color].dot : '🎨'} สี</button>
@@ -1531,6 +1593,8 @@ function partyText(p, idx){
       lines.push(`> ${i+1}. ⬜ ว่าง`);
     }
   });
+  const resNames = (p.res || []).filter(s => s !== null).map(id => (memberById(id) || {}).name).filter(Boolean);
+  if(resNames.length) lines.push(`> 🪑 สำรอง: ${resNames.join(', ')}`);
   return lines.join('\n');
 }
 function buildDiscordText(){
@@ -1709,7 +1773,7 @@ function randRoomId(){
 function serializeState(){
   return {
     members: state.members.map(m => ({id:m.id, name:m.name, job:m.job, att:m.att || '', grp:m.grp || ''})),
-    parties: state.parties.map(p => ({id:p.id, name:p.name, note:p.note||'', locked:p.locked ? 1 : 0, color:p.color || '', slots:p.slots.map(s => s === null ? -1 : s)})),
+    parties: state.parties.map(p => ({id:p.id, name:p.name, note:p.note||'', locked:p.locked ? 1 : 0, color:p.color || '', slots:p.slots.map(s => s === null ? -1 : s), res:(p.res || Array(RES_SIZE).fill(null)).map(s => s === null ? -1 : s)})),
     nextId: state.nextId,
     history: state.history || [],
     colorsOn: state.colorsOn ? 1 : 0,
@@ -1725,7 +1789,12 @@ function normalizeState(raw){
       const v = src[i];
       return (v === undefined || v === null || v === -1) ? null : v;
     });
-    return {id:p.id, name:p.name || 'ตี้', note:p.note || '', locked:!!p.locked, color:p.color || '', slots};
+    const resSrc = p.res ? Object.values(p.res) : [];
+    const res = Array.from({length:RES_SIZE}, (_,i) => {
+      const v = resSrc[i];
+      return (v === undefined || v === null || v === -1) ? null : v;
+    });
+    return {id:p.id, name:p.name || 'ตี้', note:p.note || '', locked:!!p.locked, color:p.color || '', slots, res};
   });
   const nextId = raw.nextId || Math.max(0, ...members.map(m=>m.id), ...parties.map(p=>p.id)) + 1;
   return {
