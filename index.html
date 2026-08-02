@@ -967,7 +967,7 @@ function renderDigest(){
   // หมวดคนที่ยังไม่มีตี้
   const unNoParty = state.members.filter(m => !partyOf(m.id) && m.att !== 'no');
   if(unNoParty.length){
-    html += `<div class="dzone" style="color:var(--muted);">👥 ยังไม่มีตี้ (${unNoParty.length} คน)</div><div class="dcard" style="border-left-color:var(--muted);">${unNoParty.map(m =>
+    html += `<div class="dzone" style="color:var(--muted);">👥 ยังไม่มีตี้ (${unNoParty.length} คน)</div><div class="dcard" style="border-left-color:var(--muted); cursor:default;">${unNoParty.map(m =>
       `<span class="dmemb"${admX ? ` onclick="event.stopPropagation();openPicker(${m.id})" title="กดเพื่อส่งเข้าตี้"` : ''} style="display:inline-block; margin:2px 6px 2px 0;">${jobInfo(m.job).emoji} ${esc(m.name)}</span>`
     ).join('')}</div>`;
   }
