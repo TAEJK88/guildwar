@@ -388,6 +388,7 @@
     </div>
     <div class="tgroup"><span class="tlabel">🗄 คลังข้อมูล</span>
       <button class="btn small" onclick="openRegistry()">📇 ทะเบียนกิล</button>
+      <button class="btn small" onclick="importFromGw()">📥 ดึงรายชื่อจากกิลวอ</button>
       <button class="btn small" onclick="openGroups()">🤝 ตี้ประจำ</button>
       <button class="btn small" onclick="saveTemplate()">📑 เซฟผังตี้</button>
       <button class="btn small" onclick="openTemplates()">📚 โหลดผัง</button>
@@ -466,7 +467,7 @@
     <div id="histList"></div>
   </div>
 </div>
-<div style="text-align:center; font-size:10.5px; color:var(--muted); margin-top:16px; position:relative; z-index:1;" id="verTag">เวอร์ชัน 20 — ล็อคลำดับตี้ 🔢</div>
+<div style="text-align:center; font-size:10.5px; color:var(--muted); margin-top:16px; position:relative; z-index:1;" id="verTag">เวอร์ชัน 21 — ดึงรายชื่อกิลวอเข้า Monochrome 📥</div>
 <div id="toast"></div>
 
 <script>
@@ -1602,6 +1603,27 @@ function toggleSlotRules(){
 function setSlotRule(i, v){
   state.slotRules[i] = v;
   render();
+}
+
+// ---------- ดึงรายชื่อจากกิลวอ → Monochrome War ----------
+function importFromGw(){
+  if(typeof isAdmin !== 'undefined' && !isAdmin){ toast('👑 เฉพาะหัวกิลเท่านั้น'); return; }
+  if(!_db || !roomId){ toast('⚠️ ใช้ได้เมื่อออนไลน์เท่านั้น'); return; }
+  if(curMode !== 'mw'){ toast('ปุ่มนี้ใช้ในแท็บ 🌓 Monochrome War (สลับแท็บบนหัวเว็บก่อน)'); return; }
+  _db.ref('rooms/' + roomId + '/state/members').once('value').then(snap => {
+    const raw = snap.val() || {};
+    const list = Object.values(raw).filter(Boolean);
+    if(!list.length){ toast('ฝั่งกิลวอยังไม่มีรายชื่อ'); return; }
+    let added = 0, full = false;
+    for(const m of list){
+      if(!m.name || state.members.some(x => x.name === m.name)) continue;
+      if(state.members.length >= 50){ full = true; break; }
+      state.members.push({id: state.nextId++, name: m.name, job: m.job || 'อื่น ๆ', grp: m.grp || ''});
+      added++;
+    }
+    render();
+    toast('📥 ดึงจากกิลวอมา ' + added + ' คน (รวมตอนนี้ ' + state.members.length + '/50)' + (full ? ' — เต็ม 50 หยุดพอดี' : ''));
+  }).catch(() => toast('❌ ดึงรายชื่อไม่สำเร็จ ลองใหม่อีกครั้ง'));
 }
 
 // ---------- render ----------
