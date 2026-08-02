@@ -172,6 +172,9 @@
   }
   .chip .del:hover{color:var(--red); background:rgba(224,85,85,.15);}
   .digest{display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:10px;}
+  .dzone{font-size:15px; font-weight:800; margin:12px 0 7px; letter-spacing:.5px; display:flex; align-items:center; gap:8px;}
+  .dzone::after{content:''; flex:1; height:1px; background:linear-gradient(90deg, currentColor, transparent); opacity:.4;}
+  .dzone:first-child{margin-top:2px;}
   .dcard{border:1px solid var(--line); border-left:3px solid var(--gold); border-radius:4px; padding:8px 10px; background:rgba(255,255,255,.03); font-size:12.5px; cursor:grab; transition:.15s;}
   .dcard:active{cursor:grabbing;}
   .dcard.dragover{border-color:var(--pink); box-shadow:0 0 14px rgba(255,143,199,.5); transform:scale(1.03);}
@@ -379,7 +382,7 @@
 
 <div class="panel" id="digestWrap" style="max-width:1280px; margin:0 auto 16px; position:relative; z-index:1; display:none;">
   <h2 style="cursor:pointer; margin-bottom:0;" onclick="toggleDigest()">📋 สรุปตี้รอบนี้ <span class="count"><span class="adm">↔️ ลากการ์ดเพื่อสลับตำแหน่งตี้ · </span><span id="digestToggle">▾ ซ่อน</span></span></h2>
-  <div id="digestBody" class="digest" style="margin-top:10px;"></div>
+  <div id="digestBody" style="margin-top:10px;"></div>
 </div>
 
 <div class="layout">
@@ -910,7 +913,7 @@ function renderDigest(){
   if(!hasAny) return;
   document.getElementById('digestToggle').textContent = digestHidden ? '▸ แสดง' : '▾ ซ่อน';
   const body = document.getElementById('digestBody');
-  body.style.display = digestHidden ? 'none' : 'grid';
+  body.style.display = digestHidden ? 'none' : 'block';
   if(digestHidden) return;
   let fi = null;
   const dae = document.activeElement;
@@ -918,7 +921,7 @@ function renderDigest(){
     fi = {pid: dae.dataset.pid, value: dae.value, ss: dae.selectionStart, se: dae.selectionEnd};
   }
   const admX = (typeof isAdmin === 'undefined' || isAdmin);
-  body.innerHTML = state.parties.map(p => {
+  const makeCard = p => {
     const mems = p.slots.filter(s => s !== null).map((id, mi) => {
       const m = memberById(id); if(!m) return '';
       return `<span class="dmemb"${admX ? ` onclick="event.stopPropagation();openPicker(${m.id})" title="กดเพื่อย้ายตี้ / เอาออก"` : ''}><span style="opacity:.6; display:inline-block; width:14px;">${mi+1}.</span> ${jobInfo(m.job).emoji} ${esc(m.name)}</span>`;
@@ -935,7 +938,30 @@ function renderDigest(){
       ${resMems.length ? `<div class="dmem" style="opacity:.92; margin-top:2px; border-top:1px dashed rgba(255,255,255,.2); padding-top:2px;">${resMems.join('')}</div>` : ''}
       ${free > 0 && mems.length ? `<div class="dfree">เหลือว่าง ${free} ที่</div>` : ''}
     </div>`;
-  }).join('');
+  };
+  // จัดหมวดตามโซนสี
+  let html = '';
+  const anyColor = state.colorsOn && state.parties.some(p => p.color);
+  if(anyColor){
+    const byColor = {};
+    state.parties.forEach(p => { const c = p.color || ''; (byColor[c] = byColor[c] || []).push(p); });
+    for(const c of [...PARTY_COLORS, '']){
+      const list = byColor[c];
+      if(!list || !list.length) continue;
+      const label = c ? `${COLOR_META[c].dot} ตี้${esc((state.colorLabels||{})[c]||'')}` : '⬜ ยังไม่จัดโซน';
+      html += `<div class="dzone"${c ? ` style="color:${COLOR_META[c].css};"` : ' style="color:var(--muted);"'}>${label}</div><div class="digest">${list.map(makeCard).join('')}</div>`;
+    }
+  } else {
+    html += `<div class="digest">${state.parties.map(makeCard).join('')}</div>`;
+  }
+  // หมวดคนที่ยังไม่มีตี้
+  const unNoParty = state.members.filter(m => !partyOf(m.id) && m.att !== 'no');
+  if(unNoParty.length){
+    html += `<div class="dzone" style="color:var(--muted);">👥 ยังไม่มีตี้ (${unNoParty.length} คน)</div><div class="dcard" style="border-left-color:var(--muted);">${unNoParty.map(m =>
+      `<span class="dmemb"${admX ? ` onclick="event.stopPropagation();openPicker(${m.id})" title="กดเพื่อส่งเข้าตี้"` : ''} style="display:inline-block; margin:2px 6px 2px 0;">${jobInfo(m.job).emoji} ${esc(m.name)}</span>`
+    ).join('')}</div>`;
+  }
+  body.innerHTML = html;
   if(fi){
     const sp = body.querySelector(`.dntext[data-pid="${fi.pid}"]`);
     if(sp){
