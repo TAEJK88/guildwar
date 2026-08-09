@@ -468,7 +468,7 @@
     <div id="histList"></div>
   </div>
 </div>
-<div style="text-align:center; font-size:10.5px; color:var(--muted); margin-top:16px; position:relative; z-index:1;" id="verTag">เวอร์ชัน 22 — วางรายชื่อชุดใหญ่ทีเดียว 📋</div>
+<div style="text-align:center; font-size:10.5px; color:var(--muted); margin-top:16px; position:relative; z-index:1;" id="verTag">เวอร์ชัน 24 — Monochrome ดึงเกิน 50 คนได้แล้ว 📥</div>
 <div id="toast"></div>
 
 <script>
@@ -574,7 +574,6 @@ function addMember(){
     cancelEdit(); render(); return;
   }
   if(state.members.some(m => m.name === name)){ toast('⚠️ มีชื่อนี้อยู่แล้ว'); return; }
-  if(typeof curMode !== 'undefined' && curMode === 'mw' && state.members.length >= 50){ toast('⚠️ Monochrome War รับได้สูงสุด 50 คน — ตอนนี้เต็มแล้ว!'); return; }
   state.members.push({id: state.nextId++, name, job});
   nameEl.value = ''; nameEl.focus();
   render();
@@ -1316,22 +1315,20 @@ function regAddOne(i){
   const r = registryCache[i];
   if(!r) return;
   if(state.members.some(m => m.name === r.name)){ toast('"' + r.name + '" อยู่ในกระดานนี้แล้ว'); return; }
-  if(typeof curMode !== 'undefined' && curMode === 'mw' && state.members.length >= 50){ toast('⚠️ Monochrome War เต็ม 50 คนแล้ว'); return; }
   state.members.push({id: state.nextId++, name: r.name, job: r.job});
   render();
   regRender();
 }
 function regAddAll(){
-  let added = 0, full = false;
+  let added = 0;
   for(const r of registryCache){
     if(state.members.some(m => m.name === r.name)) continue;
-    if(typeof curMode !== 'undefined' && curMode === 'mw' && state.members.length >= 50){ full = true; break; }
     state.members.push({id: state.nextId++, name: r.name, job: r.job});
     added++;
   }
   render();
   regRender();
-  toast('➕ ดึงจากทะเบียนมา ' + added + ' คน' + (full ? ' (หยุดเพราะครบ 50)' : ''));
+  toast('➕ ดึงจากทะเบียนมา ' + added + ' คน' + (typeof curMode !== 'undefined' && curMode === 'mw' && state.members.length > 50 ? ' — เกิน 50 แล้วนะ' : ''));
 }
 function regSaveCurrent(){
   if(!state.members.length){ toast('กระดานนี้ยังไม่มีรายชื่อให้เก็บ'); return; }
@@ -1461,7 +1458,6 @@ function attPopAnswer(v){
     if(!nm){ toast('⚠️ พิมพ์หรือเลือกชื่อก่อนนะ'); return; }
     me = state.members.find(m => m.name === nm);
     if(!me){
-      if(typeof curMode !== 'undefined' && curMode === 'mw' && state.members.length >= 50){ toast('⚠️ Monochrome War เต็ม 50 คนแล้ว'); return; }
       me = {id: state.nextId++, name: nm, job: document.getElementById('attPopJob').value};
       state.members.push(me);
     }
@@ -1615,15 +1611,21 @@ function importFromGw(){
     const raw = snap.val() || {};
     const list = Object.values(raw).filter(Boolean);
     if(!list.length){ toast('ฝั่งกิลวอยังไม่มีรายชื่อ'); return; }
-    let added = 0, full = false;
+    let added = 0, updated = 0;
     for(const m of list){
-      if(!m.name || state.members.some(x => x.name === m.name)) continue;
-      if(state.members.length >= 50){ full = true; break; }
+      if(!m.name) continue;
+      const ex = state.members.find(x => x.name === m.name);
+      if(ex){
+        // ชื่อมีอยู่แล้ว → อัปเดตอาชีพ/กลุ่มจากกิลวอให้ด้วย
+        if(m.job && m.job !== 'อื่น ๆ' && ex.job !== m.job){ ex.job = m.job; updated++; }
+        if(m.grp && !ex.grp) ex.grp = m.grp;
+        continue;
+      }
       state.members.push({id: state.nextId++, name: m.name, job: m.job || 'อื่น ๆ', grp: m.grp || ''});
       added++;
     }
     render();
-    toast('📥 ดึงจากกิลวอมา ' + added + ' คน (รวมตอนนี้ ' + state.members.length + '/50)' + (full ? ' — เต็ม 50 หยุดพอดี' : ''));
+    toast('📥 ดึงจากกิลวอ: เพิ่มใหม่ ' + added + ' คน · อัปเดตอาชีพ ' + updated + ' คน (รวมทั้งหมด ' + state.members.length + ' คน)' + (state.members.length > 50 ? ' — เกิน 50 แล้ว เดี๋ยวคัดตัวจริงทีหลังได้เลย' : ''));
   }).catch(() => toast('❌ ดึงรายชื่อไม่สำเร็จ ลองใหม่อีกครั้ง'));
 }
 
@@ -1658,7 +1660,6 @@ function runBulk(){
   for(const nm of names){
     const ex = state.members.find(m => m.name === nm);
     if(ex){ dup++; ids.push(ex.id); continue; }
-    if(typeof curMode !== 'undefined' && curMode === 'mw' && state.members.length >= 50){ full = true; break; }
     const m = {id: state.nextId++, name: nm, job};
     state.members.push(m);
     ids.push(m.id);
@@ -1682,7 +1683,7 @@ function runBulk(){
   }
   closePicker();
   render();
-  toast('📋 เพิ่ม ' + added + ' คน' + (dup ? ' · ซ้ำ ' + dup + ' คน' : '') + (doAssign ? ' และจัดลงตี้เรียบร้อย' : '') + (full ? ' — หยุดที่ 50 คนเต็ม' : ''));
+  toast('📋 เพิ่ม ' + added + ' คน' + (dup ? ' · ซ้ำ ' + dup + ' คน' : '') + (doAssign ? ' และจัดลงตี้เรียบร้อย' : '') + (typeof curMode !== 'undefined' && curMode === 'mw' && state.members.length > 50 ? ' — เกิน 50 แล้วนะ' : ''));
 }
 
 // ---------- render ----------
@@ -1750,7 +1751,8 @@ function render(){
     : `<div style="color:#5d5480;font-size:13px;text-align:center;padding:14px 0;font-style:italic">${state.members.length? 'ไม่พบที่ค้นหา' : 'ยังไม่มีสมาชิก — เพิ่มชื่อด้านบนได้เลย'}</div>`;
   const assignedCount = state.members.filter(m => partyOf(m.id)).length;
   const _cap = (typeof curMode !== 'undefined' && curMode === 'mw') ? '/50' : '';
-  document.getElementById('rosterCount').textContent = `ทั้งหมด ${state.members.length}${_cap} คน · ลงตี้แล้ว ${assignedCount}`;
+  const _over = (typeof curMode !== 'undefined' && curMode === 'mw' && state.members.length > 50) ? ' ⚠️ เกินโควต้า 50' : '';
+  document.getElementById('rosterCount').textContent = `ทั้งหมด ${state.members.length}${_cap} คน · ลงตี้แล้ว ${assignedCount}${_over}`;
 
   // จำช่องที่กำลังพิมพ์อยู่ (กันข้อความหายตอนหน้าอัปเดตสด)
   let focusInfo = null;
