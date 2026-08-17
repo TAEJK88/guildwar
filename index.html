@@ -393,6 +393,7 @@
       <button class="btn small" onclick="saveTemplate()">📑 เซฟผังตี้</button>
       <button class="btn small" onclick="openTemplates()">📚 โหลดผัง</button>
       <button class="btn small" onclick="resetAtt()">🔄 รีเซ็ตเช็คชื่อรอบใหม่</button>
+      <button class="btn small" onclick="setAllNo()">❌ ตั้งทุกคนไม่มา</button>
       <button class="btn small" id="saveBtn" onclick="exportData()">💾 บันทึกไฟล์</button>
       <button class="btn small" id="openBtn" onclick="document.getElementById('importFile').click()">📂 เปิดไฟล์</button>
     </div>
@@ -468,7 +469,7 @@
     <div id="histList"></div>
   </div>
 </div>
-<div style="text-align:center; font-size:10.5px; color:var(--muted); margin-top:16px; position:relative; z-index:1;" id="verTag">เวอร์ชัน 24 — Monochrome ดึงเกิน 50 คนได้แล้ว 📥</div>
+<div style="text-align:center; font-size:10.5px; color:var(--muted); margin-top:16px; position:relative; z-index:1;" id="verTag">เวอร์ชัน 25 — ปุ่มตั้งทุกคนไม่มา ❌</div>
 <div id="toast"></div>
 
 <script>
@@ -828,6 +829,14 @@ function resetAtt(){
   state.members.forEach(m => m.att = '');
   render();
   toast('🔄 เริ่มเช็คชื่อรอบใหม่แล้ว — บอกลูกกิลมากดกันได้เลย');
+}
+function setAllNo(){
+  if(typeof isAdmin !== 'undefined' && !isAdmin){ toast('👑 เฉพาะหัวกิลเท่านั้น'); return; }
+  if(!state.members.length){ toast('ยังไม่มีรายชื่อสมาชิกเลย'); return; }
+  if(!window.confirm('ตั้งสถานะทุกคนเป็น ❌ ไม่มา? (จะไม่ส่งแจ้งเตือนเข้าดิส — พอใครกด ✅ มา ค่อยเด้งแจ้งทีละคน)')) return;
+  state.members.forEach(m => m.att = 'no');
+  render();
+  toast('❌ ตั้งทุกคนเป็นไม่มาแล้ว — รีเช็คได้เลย ใครมาค่อยติ๊ก ✅');
 }
 let webhookUrl = 'https://discord.com/api/webhooks/1529898585368559756/V23tPW-XzAOgYUXUVStnhEYyDSqEXFCf7_1aT5U4dzhE2Eb-G3qRneTTSpHFvMIkTXaK';
 // Webhook แยกสำหรับแจ้งเช็คชื่อ "ใครเข้าร่วมวอ" (ถ้าเว้นว่างจะใช้ช่องหลักแทน)
